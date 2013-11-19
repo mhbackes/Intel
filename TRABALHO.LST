@@ -1,0 +1,730 @@
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 1
+trabalho.ASM
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      4	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      5	      =0008		     BS		       EQU    08H ; caractere ASCII "Backspace"
+      6
+      7				     ; SEGMENTO	DE DADOS DO PROGRAMA
+      8	0000			     dados     segment
+      9	0000  3D*(??)		     Y			     db	61 dup (?)
+     10	003D  3D*(??)		     X			     db	61 dup (?)
+     11	007A  0001		     a			     dw	1
+     12	007C  0000		     b			     dw	0
+     13	007E  0000		     i			     dw	0
+     14	0080  0000		     j			     dw	0
+     15	0082  0000		     k			     dw	0
+     16	0084  64*(??)		     nome_dic	     db	100 dup	(?)
+     17	00E8  64*(??)		     nome_cif	     db	100 dup	(?)
+     18	014C  80*(??)		     buffer	     db	128 dup	(?)
+     19	01CC  ????		     buffer_ptr	     dw	?
+     20	01CE  ????		     handler	     dw	?
+     21	01D0  ????		     handler_dic     dw	?
+     22	01D2  ????		     handler_cif     dw	?
+     23	01D4  ????		     tam_arq_dic     dw	?
+     24	01D6  ????		     tam_arq_cif dw ?
+     25	01D8  45 52 52 4F 3A 20	4F+  erro	     db	'ERRO: O arquivo nao foi encontrado',CR,LF,'$'
+     26	      20 61 72 71 75 69	76+
+     27	      6F 20 6E 61 6F 20	66+
+     28	      6F 69 20 65 6E 63	6F+
+     29	      6E 74 72 61 64 6F	0D+
+     30	      0A 24
+     31	01FD  0000		     tamanho	     dw	0
+     32	01FF  0000		     tamanho_cif dw 0
+     33	0201  0000		     tamanho_dic dw 0
+     34	0203  00 01 00 09 00 15	00+  tabela	     db	0,1,0,9,0,21,0,15,0,3,0,19,0,0,0,7,0,23,0,11,0,5,0,17,0,25
+     35	      0F 00 03 00 13 00	00+
+     36	      00 07 00 17 00 0B	00+
+     37	      05 00 11 00 19
+     38	021D  0000		     n_linhas	     dw	0
+     39	021F  0000		     achou	     dw	0
+     40	0221  4D 61 72 63 6F 73	20+  msg0	     db	'Marcos	Henrique Backes	- 00228483',CR,LF,CR,LF,'$'
+     41	      48 65 6E 72 69 71	75+
+     42	      65 20 42 61 63 6B	65+
+     43	      73 20 2D 20 30 30	32+
+     44	      32 38 34 38 33 0D	0A+
+     45	      0D 0A 24
+     46	0247  44 69 67 69 74 65	20+  msg1	     db	'Digite	o nome do arquivo de dicionario:',CR,LF,'$'
+     47	      6F 20 6E 6F 6D 65	20+
+     48	      64 6F 20 61 72 71	75+
+     49	      69 76 6F 20 64 65	20+
+     50	      64 69 63 69 6F 6E	61+
+     51	      72 69 6F 3A 0D 0A	24
+     52	0271  41 72 71 75 69 76	6F+  msg2	     db	'Arquivo aberto	com sucesso.',CR,LF,'Numero de palavras	validas: $'
+     53	      20 61 62 65 72 74	6F+
+     54	      20 63 6F 6D 20 73	75+
+     55	      63 65 73 73 6F 2E	0D+
+     56	      0A 4E 75 6D 65 72	6F+
+     57	      20 64 65 20 70 61	6C+
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 2
+trabalho.ASM
+
+
+
+     58	      61 76 72 61 73 20	76+
+     59	      61 6C 69 64 61 73	3A+
+     60	      20 24
+     61	02AB  0D 0A 44 69 67 69	74+  msg3	     db	CR,LF,'Digite o	nome do	arquivo	com texto cifrado:',CR,LF,'$'
+     62	      65 20 6F 20 6E 6F	6D+
+     63	      65 20 64 6F 20 61	72+
+     64	      71 75 69 76 6F 20	63+
+     65	      6F 6D 20 74 65 78	74+
+     66	      6F 20 63 69 66 72	61+
+     67	      64 6F 3A 0D 0A 24
+     68	02DB  41 72 71 75 69 76	6F+  msg4	     db	'Arquivo aberto	com sucesso',CR,LF,'Numero de frases validas: $'
+     69	      20 61 62 65 72 74	6F+
+     70	      20 63 6F 6D 20 73	75+
+     71	      63 65 73 73 6F 0D	0A+
+     72	      4E 75 6D 65 72 6F	20+
+     73	      64 65 20 66 72 61	73+
+     74	      65 73 20 76 61 6C	69+
+     75	      64 61 73 3A 20 24
+     76	0312  61 3D 24		     decifrado_a     db	'a=$'
+     77	0315  20 62 3D 24	     decifrado_b     db	' b=$'
+     78	0319  20 24		     espaco	     db	' $'
+     79	031B  0D 0A 24		     barra_n	     db	CR,LF,'$'
+     80	031E  4E 61 6F 20 65 6E	63+  nao_achou	     db	'Nao encontrado: $'
+     81	      6F 6E 74 72 61 64	6F+
+     82	      3A 20 24
+     83	032F			     dados     ends
+     84
+     85				     ; SEGMENTO	DE PILHA DO PROGRAMA
+     86	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     87	0000  80*(????)			      dw     128 dup(?)
+     88	0100			     pilha    ends
+     89
+     90				     ; SEGMENTO	DE CÓDIGO DO PROGRAMA
+     91	0000			     codigo   segment
+     92	0000			     inicio:	     ; CS e IP sao inicializados com este endereco
+     93	0000  B8 0000s			     mov	 ax,dados	    ; inicializa DS
+     94	0003  8E D8			     mov     ds,ax		; com endereco do segmento DADOS
+     95	0005  8E C0			     mov     es,ax		; idem em ES
+     96				     ; fim da carga inicial dos	registradores de segmento
+     97	0007  BA 0221r				     lea	     dx,msg0
+     98	000A  E8 0163				     call    puts			     ; imprime nome do aluno
+     99	000D  BA 0247r				     lea     dx,msg1
+    100	0010  E8 015D				     call    puts			     ; pede que	o usuario digite o nome	do  +
+    101				     arquivo dicionario
+    102	0013  BF 0084r				     lea	     di,nome_dic
+    103	0016  E8 015C				     call    scanf			     ; "scanf" do nome do arquivo
+    104	0019  BA 0084r				     lea     dx,nome_dic
+    105	001C  E8 0183				     call    conta_l			     ; conta o numero de linhas	validas
+    106	001F  73 03				     jnc	     abriu_dic			     ; se houve	erro encerra o	    +
+    107				     programa
+    108	0021  E9 0147				     jmp	     fim
+    109	0024			     abriu_dic:
+    110	0024  BA 0271r				     lea	     dx,msg2
+    111	0027  E8 0146				     call    puts
+    112	002A  A1 021Dr				     mov	     ax,n_linhas
+    113	002D  A3 01D4r				     mov	     tam_arq_dic,ax
+    114	0030  E8 01F2				     call    printf4			     ; imprime o numero	de linhas validas
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 3
+trabalho.ASM
+
+
+
+    115	0033  BA 02ABr				     lea     dx,msg3
+    116	0036  E8 0137				     call    puts			     ; pede que	digite o nome do arquivo com+
+    117				     texto cifrado
+    118	0039  BF 00E8r				     lea	     di,nome_cif
+    119	003C  E8 0136				     call    scanf			     ; "scanf" do nome do arquivo
+    120	003F  BA 00E8r				     lea     dx,nome_cif
+    121	0042  E8 015D				     call    conta_l			     ; conta numero de linhas validas
+    122	0045  73 03				     jnc	     abriu_cif			     ; se houve	erro encerra o	    +
+    123				     programa
+    124	0047  E9 0121				     jmp	     fim
+    125	004A			     abriu_cif:
+    126	004A  BA 02DBr				     lea	     dx,msg4
+    127	004D  E8 0120				     call    puts
+    128	0050  A1 021Dr				     mov	     ax,n_linhas
+    129	0053  A3 01D6r				     mov	     tam_arq_cif,ax
+    130	0056  E8 01B4				     call    printf2			     ; imprime o numero	de frases validas
+    131	0059  BA 031Br				     lea	     dx,barra_n
+    132	005C  E8 0111				     call    puts
+    133
+    134	005F  BA 00E8r				     lea	     dx,nome_cif		     ; abre o arquivo cifrado
+    135	0062  E8 0200				     call    fopen
+    136	0065  A3 01D2r				     mov	     handler_cif,ax
+    137
+    138	0068  BA 0084r				     lea	     dx,nome_dic		     ; abre o arquivo dicionario
+    139	006B  E8 01F7				     call    fopen
+    140	006E  A3 01D0r				     mov	     handler_dic,ax
+    141
+    142	0071  A1 01D6r				     mov	     ax,tam_arq_cif	     ; usa j como contador,
+    143	0074  A3 0080r				     mov	     j,ax			     ; conta quantas linhas do	    +
+    144				     arquivo serao lidas
+    145	0077			     laco1:
+    146	0077  83 3E 0080r 00			     cmp	     j,0				     ; testa se	o arquivo   +
+    147				     cifrado acabou
+    148	007C  75 03				     jnz	     arq_cif_nao_terminou
+    149	007E  E9 00E3				     jmp	     fecha_cif
+    150	0081			     arq_cif_nao_terminou:
+    151	0081  8B 1E 01D2r			     mov	     bx,handler_cif	     ; le linha	do arquivo cifrado
+    152	0085  BF 0000r				     lea	     di,Y			     ; e armazena em Y
+    153	0088  E8 01F3				     call    fgets
+    154	008B  A3 01FFr				     mov	     tamanho_cif,ax
+    155
+    156	008E  83 2E 0080r 01			     sub	     j,1				     ; decrementa j
+    157
+    158	0093  C7 06 007Ar 0001			     mov	     a,1				     ;a=1,b=0
+    159	0099  C7 06 007Cr 0000			     mov	     b,0
+    160	009F  C7 06 021Fr 0000			     mov	     achou,0			     ; flag achou=0
+    161	00A5			     laco2:
+    162	00A5  E8 022B				     call    decodifica			     ; decodifica Y e armazena em X
+    163
+    164	00A8  A1 01D4r				     mov	     ax,tam_arq_dic	     ; usa k como contador.
+    165	00AB  A3 0082r				     mov	     k,ax			     ; conta quantas linhas do	    +
+    166				     arquivo serao lidas
+    167
+    168	00AE  8B 1E 01D0r			     mov	     bx,handler_dic	     ; vai para	o inicio do arquivo	    +
+    169				     dicionario
+    170	00B2  E8 01BC				     call    fseek_ini
+    171	00B5			     laco3:
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 4
+trabalho.ASM
+
+
+
+    172	00B5  83 3E 0082r 00			     cmp	     k,0				     ; se nao houver linhas +
+    173				     do	arquivo	para serem lidas
+    174	00BA  75 03				     jnz	     arq_dic_nao_terminou
+    175	00BC  EB 56 90				     jmp	     incrementa_a_b	     ; vai para	incrementa a b e testa nova +
+    176				     decifragem
+    177	00BF			     arq_dic_nao_terminou:
+    178	00BF  8B 1E 01D0r			     mov	     bx,handler_dic	     ; le linha	do arquivo dicionario
+    179	00C3  BF 014Cr				     lea	     di,buffer			     ; e armazena em buffer
+    180	00C6  E8 01B5				     call    fgets
+    181	00C9  A3 0201r				     mov	     tamanho_dic,ax
+    182
+    183	00CC  83 2E 0082r 01			     sub	     k,1				     ; decrementa k
+    184
+    185	00D1  B8 014Cr				     lea	     ax,buffer			     ; testa se	a palavra do	    +
+    186				     dicionario
+    187	00D4  BB 003Dr				     lea	     bx,X			     ; esta contida na frase cifrada
+    188	00D7  8B 0E 0201r			     mov	     cx,tamanho_dic
+    189	00DB  8B 16 01FFr			     mov	     dx,tamanho_cif
+    190	00DF  E8 0236				     call    contem?
+    191	00E2  73 D1				     jnc	     laco3
+    192	00E4			     contem:
+    193	00E4  C7 06 021Fr 0001			     mov	     achou,1			     ; flag achou=1
+    194
+    195	00EA  BA 0312r				     lea	     dx,decifrado_a	     ; Imprime na tela:
+    196	00ED  E8 0080				     call    puts			     ; a=xx b=xx <texto	decifrado>
+    197	00F0  A1 007Ar				     mov	     ax,a
+    198	00F3  E8 0117				     call    printf2
+    199	00F6  BA 0315r				     lea	     dx,decifrado_b
+    200	00F9  E8 0074				     call    puts
+    201	00FC  A1 007Cr				     mov	     ax,b
+    202	00FF  E8 010B				     call    printf2
+    203	0102  BA 0319r				     lea	     dx,espaco
+    204	0105  E8 0068				     call    puts
+    205	0108  BA 003Dr				     lea	     dx,X
+    206	010B  E8 0062				     call    puts
+    207	010E  BA 031Br				     lea	     dx,barra_n
+    208	0111  E8 005C				     call    puts
+    209
+    210	0114			     incrementa_a_b:
+    211	0114  FF 06 007Cr			     inc	     b					     ; incrementa a e b
+    212	0118  83 3E 007Cr 1A			     cmp	     b,26			     ; para testar nova	decifragem
+    213	011D  74 02				     je		     b_eh_vinte_seis
+    214	011F  EB 84				     jmp	     laco2
+    215	0121			     b_eh_vinte_seis:
+    216	0121  C7 06 007Cr 0000			     mov	     b,0
+    217	0127  83 06 007Ar 02			     add	     a,2
+    218	012C  83 3E 007Ar 1B			     cmp	     a,27
+    219	0131  74 12				     je		     achou?
+    220	0133  83 3E 007Ar 0D			     cmp	     a,13
+    221	0138  74 03				     je		     eh_treze
+    222	013A  E9 FF68				     jmp	     laco2
+    223	013D			     eh_treze:
+    224	013D  83 06 007Ar 02			     add	     a,2
+    225	0142  E9 FF60				     jmp	     laco2
+    226	0145			     achou?:
+    227	0145  83 3E 021Fr 00			     cmp	     achou,0			     ; imprime nao encontrado:	    +
+    228				     <texto decifrado>
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 5
+trabalho.ASM
+
+
+
+    229	014A  74 03				     je		     achou?_nao			     ; se o programa nao encontrou  +
+    230				     decifragem
+    231	014C  E9 FF28				     jmp	     laco1
+    232	014F			     achou?_nao:
+    233	014F  BA 031Er				     lea	     dx,nao_achou
+    234	0152  E8 001B				     call    puts
+    235	0155  BA 0000r				     lea	     dx,Y
+    236	0158  E8 0015				     call    puts
+    237	015B  BA 031Br				     lea	     dx,barra_n
+    238	015E  E8 000F				     call    puts
+    239	0161  E9 FF13				     jmp	     laco1
+    240
+    241	0164			     fecha_cif:
+    242	0164  8B 1E 01D2r			     mov	     bx,handler_cif	     ; fecha arquivo cifrado
+    243	0168  E8 0101				     call    fclose
+    244	016B			     fim:
+    245	016B  B8 4C00				     mov     ax,4c00h ;	funcao retornar	ao DOS no AH
+    246							      ;	codigo de retorno 0 no AL
+    247	016E  CD 21			     int     21h      ;	chamada	do DOS
+    248
+    249
+    250				     ; puts: função que imprime uma string na	tela até encontrar '$'
+    251				     ; - Chamada da função:
+    252				     ;	     lea dx,<end_inic_string>
+    253				     ;	     call puts
+    254	0170			     puts    proc
+    255	0170  B4 09				     mov     ah,9
+    256	0172  CD 21				     int     21H
+    257	0174  C3				     ret
+    258	0175					     endp
+    259				     ; scanf: lê caracteres do	teclado	e os imprime na	tela,
+    260				     ; scanf_backspace apaga o último caractere lido e	enter armazena-os
+    261				     ; em uma string, retorna em bl o número de caracteres lido.
+    262				     ; - Chamada da função:
+    263				     ;		     lea dx,<string>
+    264				     ;		     call scanf
+    265	0175			     scanf   proc
+    266	0175  B3 00				     mov bl,0 ;conta quantos caracteres	foram lidos
+    267	0177  B4 01		     scanf_entrada: mov	   ah,1
+    268	0179  CD 21			     int     21h     ; le um caracter com eco
+    269	017B  3C 0D			     cmp     al,CR   ; compara com carriage return
+    270	017D  74 1F			     je	     scanf_continua
+    271	017F  3C 08				     cmp	     al,BS
+    272	0181  74 07				     je		     scanf_backspace
+    273	0183  88 05			     mov     [di],al ; coloca no buffer
+    274	0185  47			     inc     di
+    275	0186  FE C3				     inc     bl
+    276	0188  EB ED			     jmp     scanf_entrada
+    277	018A			     scanf_backspace:
+    278	018A  80 FB 00				     cmp	     bl,0
+    279	018D  74 E8				     je		     scanf_entrada
+    280	018F  FE CB				     dec	     bl
+    281	0191  4F				     dec	     di
+    282	0192  B4 02				     mov	     ah,2
+    283	0194  B2 20				     mov	     dl,' '
+    284	0196  CD 21				     int     21H
+    285	0198  B2 08				     mov	     dl,BS
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 6
+trabalho.ASM
+
+
+
+    286	019A  CD 21				     int	     21H
+    287	019C  EB D9				     jmp	     scanf_entrada
+    288	019E			     scanf_continua:
+    289	019E  C6 05 00				     mov   byte	ptr [di],0
+    290	01A1  C3				     ret
+    291	01A2					     endp
+    292				     ; conta_l:	abre o arquivo,	conta quantas linhas tem mais caracteres e
+    293				     ; armazena	em n_linhas, depois fecha o arquivo. Se	não encontrar o arquivo
+    294				     ; imprime mensagem	de erro	na tela.
+    295				     ; - Chamada da função:
+    296				     ;	     lea dx,<string_nome_arq>
+    297				     ;	     call conta_l
+    298	01A2			     conta_l proc
+    299	01A2  B4 3D			     mov    ah,3dh ; abre arquivo para leitura
+    300	01A4  B0 00			     mov    al,0
+    301	01A6  CD 21			     int     21h
+    302	01A8  73 09			     jnc    conta_l_abriu_ok
+    303	01AA  BA 01D8r			     lea    dx,erro
+    304	01AD  B4 09			     mov    ah,9
+    305	01AF  CD 21			     int    21h
+    306	01B1  F9				     stc
+    307	01B2  C3			     ret
+    308	01B3			     conta_l_abriu_ok:
+    309	01B3  A3 01CEr				     mov     handler,ax
+    310	01B6  C7 06 021Dr 0000			     mov     n_linhas,0
+    311	01BC			     conta_l_pre_conta_l_laco:
+    312	01BC  C7 06 01FDr 0000			     mov     tamanho,0
+    313	01C2  B4 3F		     conta_l_laco:    mov ah,3fh      ;	le um caracter do arquivo
+    314	01C4  8B 1E 01CEr		     mov     bx,handler
+    315	01C8  B9 0001			     mov     cx,1
+    316	01CB  BA 014Cr				     lea     dx,buffer
+    317	01CE  CD 21			     int     21h
+    318	01D0  3B C1			     cmp     ax,cx
+    319	01D2  75 23			     jne     conta_l_EOF
+    320	01D4			     conta_l_teste_cslf:
+    321	01D4  8A 16 014Cr		     mov     dl,buffer
+    322	01D8  80 FA 0D			     cmp     dl, CR
+    323	01DB  74 E5			     je	     conta_l_laco
+    324	01DD  80 FA 0A				     cmp     dl, LF
+    325	01E0  74 07				     je	     conta_l_cslf
+    326	01E2			     conta_l_nao_eh_cslf:
+    327	01E2  83 06 01FDr 01			     add     tamanho,1
+    328	01E7  EB D9				     jmp     conta_l_laco
+    329	01E9			     conta_l_cslf:
+    330	01E9  83 3E 01FDr 05			     cmp     tamanho,5
+    331	01EE  7C CC				     jl	     conta_l_pre_conta_l_laco
+    332	01F0  83 06 021Dr 01			     add	     n_linhas,1
+    333	01F5  EB C5				     jmp     conta_l_pre_conta_l_laco
+    334	01F7			     conta_l_EOF:
+    335	01F7  83 3E 01FDr 05			     cmp     tamanho,5
+    336	01FC  7C 05				     jl	     conta_l_fim
+    337	01FE  83 06 021Dr 01			     add     n_linhas,1
+    338	0203			     conta_l_fim:
+    339	0203  B4 3E				     mov ah,3eh	      ;	fecha arquivo
+    340	0205  8B 1E 01CEr			     mov bx,handler
+    341	0209  CD 21			     int 21h
+    342	020B  F8				     clc
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 7
+trabalho.ASM
+
+
+
+    343	020C  C3				     ret
+    344	020D					     endp
+    345				     ; printf2:	Imprime	um valor de 2 dígitos na tela
+    346				     ; - Chamada da função:
+    347				     ;	     mov ax,<número>
+    348				     ;	     call printf
+    349	020D			     printf2 proc
+    350	020D  B3 0A				     mov bl,10
+    351	020F  F6 F3				     div bl
+    352	0211  04 30				     add al,'0'
+    353	0213  8A D0				     mov dl,al
+    354	0215  50				     push ax
+    355	0216  B4 02				     mov ah,2
+    356	0218  CD 21				     int 21H
+    357	021A  58				     pop ax
+    358	021B  80 C4 30				     add ah,'0'
+    359	021E  8A D4				     mov dl,ah
+    360	0220  B4 02				     mov ah,2
+    361	0222  CD 21				     int 21H
+    362	0224  C3				     ret
+    363	0225					     endp
+    364				     ; printf4:	Imprime	um valor de 4 dígitos na tela
+    365				     ; -Chamada	da função:
+    366				     ; mov ax,<número>
+    367				     ; call printf
+    368	0225			     printf4 proc
+    369	0225  BA 0000				     mov     dx,0
+    370	0228  BB 03E8				     mov     bx,1000
+    371	022B  F7 F3				     div     bx
+    372	022D  52				     push    dx
+    373	022E  8A D0				     mov     dl,al
+    374	0230  80 C2 30				     add     dl,'0'
+    375	0233  B4 02				     mov     ah,2
+    376	0235  CD 21				     int     21H
+    377	0237  58				     pop     ax
+    378	0238  B3 64				     mov	     bl,100
+    379	023A  F6 F3				     div	     bl
+    380	023C  50				     push    ax
+    381	023D  8A D0				     mov     dl,al
+    382	023F  80 C2 30				     add     dl,'0'
+    383	0242  8B C2				     mov	     ax,dx
+    384	0244  B4 02				     mov     ah,2
+    385	0246  CD 21				     int     21H
+    386	0248  58				     pop     ax
+    387	0249  8A C4				     mov	     al,ah
+    388	024B  B4 00				     mov	     ah,0
+    389	024D  B3 0A				     mov	     bl,10
+    390	024F  F6 F3				     div     bl
+    391	0251  04 30				     add     al,'0'
+    392	0253  8A D0				     mov     dl,al
+    393	0255  50				     push    ax
+    394	0256  B4 02				     mov     ah,2
+    395	0258  CD 21				     int     21H
+    396	025A  58				     pop     ax
+    397	025B  80 C4 30				     add     ah,'0'
+    398	025E  8A D4				     mov     dl,ah
+    399	0260  B4 02				     mov     ah,2
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 8
+trabalho.ASM
+
+
+
+    400	0262  CD 21				     int     21H
+    401	0264  C3				     ret
+    402	0265					     endp
+    403				     ; fopen: abre um arquivo, nao retorna mensagem de erro,
+    404				     ; o nome do arquivo deve estar correto.
+    405				     ; - Chamada da função:
+    406				     ;	     lea dx,<str_nome_arq>
+    407				     ;	     call fopen
+    408				     ;	     mov <handler>,ax
+    409	0265			     fopen   proc
+    410	0265  B4 3D			     mov    ah,3dh
+    411	0267  B0 00			     mov    al,0
+    412	0269  CD 21			     int     21h
+    413	026B  C3			     ret
+    414	026C					     endp
+    415				     ; fclose: fecha um	arquivo	previamente aberto
+    416				     ; - Chamada da função:
+    417				     ;	     mov bx,<handler>
+    418				     ;	     call fclose
+    419	026C			     fclose  proc
+    420	026C  B4 3E				     mov ah,3eh	      ;	fecha arquivo
+    421	026E  CD 21			     int 21h
+    422	0270  C3				     ret
+    423	0271					     endp
+    424				     ; fseek_ini: muda a posição do arquivo para o inicio
+    425				     ; - Chamada da função:
+    426				     ;	     mov     bx,<handler>
+    427				     ;	     call fseek_ini
+    428	0271			     fseek_ini proc
+    429	0271  B4 42				     mov	     ah,42H
+    430	0273  B0 00				     mov	     al,0
+    431	0275  B9 0000				     mov	     cx,0
+    432	0278  BA 0000				     mov	     dx,0
+    433	027B  CD 21				     int	     21H
+    434	027D  C3				     ret
+    435	027E					     endp
+    436				     ; fgets: lê uma linha válida do arquivo
+    437				     ; - Chamada da função:
+    438				     ;	     mov bx,<handler>
+    439				     ;	     lea di,<buffer>
+    440				     ;	     call fgets
+    441				     ;	     mov <var_tamanho>,ax
+    442	027E			     fgets   proc
+    443	027E			     fgets_pre_laco:
+    444	027E  C7 06 01FDr 0000			     mov	     tamanho,0
+    445	0284			     fgets_laco:
+    446	0284  B4 3F				     mov     ah,3fh	 ; le um caracter do arquivo
+    447	0286  B9 0001			     mov     cx,1
+    448	0289  8B D7				     mov     dx,di
+    449	028B  CD 21			     int     21h
+    450	028D  8B FA				     mov     di,dx
+    451	028F  3B C1			     cmp     ax,cx
+    452	0291  75 38			     jne     fgets_EOF
+    453	0293			     fgets_teste_enter:
+    454	0293  8A 15			     mov     dl,[di]
+    455	0295  80 FA 0D			     cmp     dl, CR
+    456	0298  74 EA			     je	     fgets_laco
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 9
+trabalho.ASM
+
+
+
+    457	029A  80 FA 0A				     cmp     dl, LF
+    458	029D  74 17				     je	     fgets_enter
+    459	029F			     fgets_teste_minuscula:
+    460	029F  80 FA 61				     cmp     dl,'a'
+    461	02A2  7C 0A				     jl	     fgets_incrementa
+    462	02A4  80 FA 7A				     cmp     dl,'z'
+    463	02A7  7F 05				     jg	     fgets_incrementa
+    464	02A9			     fgets_minuscula:
+    465	02A9  80 EA 20				     sub     dl,32
+    466	02AC  88 15				     mov     byte ptr [di],dl
+    467	02AE			     fgets_incrementa:
+    468	02AE  83 06 01FDr 01			     add	     tamanho,1
+    469	02B3  47				     inc	     di
+    470	02B4  EB CE				     jmp     fgets_laco
+    471	02B6			     fgets_enter:
+    472	02B6  83 3E 01FDr 05			     cmp	     tamanho,5
+    473	02BB  7D 06				     jge	     fim_enter
+    474	02BD  2B 3E 01FDr			     sub	     di,tamanho
+    475	02C1  EB BB				     jmp	     fgets_pre_laco
+    476	02C3			     fim_enter:
+    477	02C3  C6 05 24				     mov     byte ptr [di],'$'
+    478	02C6  A1 01FDr				     mov     ax,tamanho
+    479	02C9  F8				     clc
+    480	02CA  C3				     ret
+    481	02CB			     fgets_EOF:
+    482	02CB  C6 05 24				     mov     byte ptr [di],'$'
+    483	02CE  A1 01FDr				     mov     ax,tamanho
+    484	02D1  F9				     stc
+    485	02D2  C3				     ret
+    486	02D3					     endp
+    487				     ; decodifica: decodifica a	string Y usando	a cifra	de affine, os valores das chaves
+    488				     ; a e b, tabela, e	armazena em X
+    489				     ; - Chamada da função
+    490				     ;	     call    decodifica
+    491	02D3			     decodifica	     proc
+    492	02D3  C7 06 007Er 0000			     mov	     i,0
+    493	02D9  BF 003Dr				     lea	     di,X
+    494	02DC			     decodifica_laco:
+    495	02DC  B4 00				     mov	     ah,0
+    496	02DE  BE 0000r				     lea	     si,Y
+    497	02E1  8B 1E 007Er			     mov	     bx,i
+    498	02E5  8A 00				     mov	     al,byte ptr [bx+si+0] ; al	:= Y[i]
+    499	02E7  3C 24				     cmp	     al,'$'
+    500	02E9  74 29				     je		     decodifica_fim
+    501	02EB  2C 41				     sub	     al,65
+    502	02ED  2B 06 007Cr			     sub	     ax,b
+    503	02F1  79 02				     jns	     decodifica_positivo
+    504	02F3			     decodifica_negativo:
+    505	02F3  04 1A				     add	     al,26	     ; se Y[i] - b é negativo,	adiciona 26 para    +
+    506				     facilitar a multiplicação
+    507	02F5			     decodifica_positivo:
+    508	02F5  BE 0203r				     lea     si,tabela
+    509	02F8  8B 1E 007Ar			     mov	     bx,a
+    510	02FC  8A 18				     mov	     bl,byte ptr [bx+si+0] ; bx	:= tabela[a], mesmo que	bx := a^(-1)
+    511	02FE  F6 E3				     mul	     bl
+    512	0300  B3 1A				     mov	     bl,26
+    513	0302  F6 F3				     div	     bl
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 10
+trabalho.ASM
+
+
+
+    514	0304  80 C4 41				     add	     ah,65
+    515	0307  8B 1E 007Er			     mov	     bx,i
+    516	030B  88 21				     mov	     byte ptr [bx+di+0],ah ; X[i] := ah
+    517	030D  83 06 007Er 01			     add	     i,1
+    518	0312  EB C8				     jmp	     decodifica_laco
+    519	0314			     decodifica_fim:
+    520	0314  C6 01 24				     mov	     byte ptr [bx+di+0],'$' ; X[i] := '$'
+    521	0317  C3				     ret
+    522	0318					     endp
+    523				     ; contem?:	testa se uma string é substring de outra
+    524				     ; retorna cf=1 se sim ou cf=0 se não
+    525				     ; - Chamada da função:
+    526				     ;	     lea ax,<substring>
+    527				     ;	     lea bx,<string>
+    528				     ;	     mov cx,<tam_substring>
+    529				     ;	     mov dx,<tam_string>
+    530				     ;	     call contem?
+    531	0318			     contem? proc
+    532	0318			     contem?_laco:
+    533	0318  8B F0				     mov	     si,ax
+    534	031A  8B FB				     mov	     di,bx
+    535	031C  3B CA				     cmp	     cx,dx
+    536	031E  7F 15				     jg		     contem?_nao
+    537	0320  51				     push    cx
+    538	0321  F3> A6				     repe cmpsb
+    539	0323  83 F9 00				     cmp	     cx,0
+    540	0326  74 05				     je		     contem?_talvez
+    541	0328  59				     pop	     cx
+    542	0329			     contem?_incrementa:
+    543	0329  43				     inc	     bx
+    544	032A  4A				     dec	     dx
+    545	032B  EB EB				     jmp	     contem?_laco
+    546	032D			     contem?_talvez:
+    547	032D  59				     pop	     cx
+    548	032E  4F				     dec	     di
+    549	032F  4E				     dec	     si
+    550	0330  A6				     cmpsb
+    551	0331  75 F6				     jne	     contem?_incrementa
+    552	0333			     contem?_sim:
+    553	0333  F9				     stc
+    554	0334  C3				     ret
+    555	0335			     contem?_nao:
+    556	0335  F8				     clc
+    557	0336  C3				     ret
+    558	0337					     endp
+    559	0337			     codigo  ends
+    560					     end    inicio
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 11
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/19/13"
+??FILENAME			  Text	 "trabalho"
+??TIME				  Text	 "20:12:28"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 TRABALHO
+@WORDSIZE			  Text	 2
+A				  Word	 DADOS:007A
+ABRIU_CIF			  Near	 CODIGO:004A
+ABRIU_DIC			  Near	 CODIGO:0024
+ACHOU				  Word	 DADOS:021F
+ACHOU?				  Near	 CODIGO:0145
+ACHOU?_NAO			  Near	 CODIGO:014F
+ARQ_CIF_NAO_TERMINOU		  Near	 CODIGO:0081
+ARQ_DIC_NAO_TERMINOU		  Near	 CODIGO:00BF
+B				  Word	 DADOS:007C
+BARRA_N				  Byte	 DADOS:031B
+BS				  Number 0008
+BUFFER				  Byte	 DADOS:014C
+BUFFER_PTR			  Word	 DADOS:01CC
+B_EH_VINTE_SEIS			  Near	 CODIGO:0121
+CONTA_L				  Near	 CODIGO:01A2
+CONTA_L_ABRIU_OK		  Near	 CODIGO:01B3
+CONTA_L_CSLF			  Near	 CODIGO:01E9
+CONTA_L_EOF			  Near	 CODIGO:01F7
+CONTA_L_FIM			  Near	 CODIGO:0203
+CONTA_L_LACO			  Near	 CODIGO:01C2
+CONTA_L_NAO_EH_CSLF		  Near	 CODIGO:01E2
+CONTA_L_PRE_CONTA_L_LACO	  Near	 CODIGO:01BC
+CONTA_L_TESTE_CSLF		  Near	 CODIGO:01D4
+CONTEM				  Near	 CODIGO:00E4
+CONTEM?				  Near	 CODIGO:0318
+CONTEM?_INCREMENTA		  Near	 CODIGO:0329
+CONTEM?_LACO			  Near	 CODIGO:0318
+CONTEM?_NAO			  Near	 CODIGO:0335
+CONTEM?_SIM			  Near	 CODIGO:0333
+CONTEM?_TALVEZ			  Near	 CODIGO:032D
+CR				  Number 000D
+DECIFRADO_A			  Byte	 DADOS:0312
+DECIFRADO_B			  Byte	 DADOS:0315
+DECODIFICA			  Near	 CODIGO:02D3
+DECODIFICA_FIM			  Near	 CODIGO:0314
+DECODIFICA_LACO			  Near	 CODIGO:02DC
+DECODIFICA_NEGATIVO		  Near	 CODIGO:02F3
+DECODIFICA_POSITIVO		  Near	 CODIGO:02F5
+EH_TREZE			  Near	 CODIGO:013D
+ERRO				  Byte	 DADOS:01D8
+ESPACO				  Byte	 DADOS:0319
+FCLOSE				  Near	 CODIGO:026C
+FECHA_CIF			  Near	 CODIGO:0164
+FGETS				  Near	 CODIGO:027E
+FGETS_ENTER			  Near	 CODIGO:02B6
+FGETS_EOF			  Near	 CODIGO:02CB
+Turbo Assembler	 Version 3.2	    11/19/13 20:12:28	    Page 12
+Symbol Table
+
+
+
+FGETS_INCREMENTA		  Near	 CODIGO:02AE
+FGETS_LACO			  Near	 CODIGO:0284
+FGETS_MINUSCULA			  Near	 CODIGO:02A9
+FGETS_PRE_LACO			  Near	 CODIGO:027E
+FGETS_TESTE_ENTER		  Near	 CODIGO:0293
+FGETS_TESTE_MINUSCULA		  Near	 CODIGO:029F
+FIM				  Near	 CODIGO:016B
+FIM_ENTER			  Near	 CODIGO:02C3
+FOPEN				  Near	 CODIGO:0265
+FSEEK_INI			  Near	 CODIGO:0271
+HANDLER				  Word	 DADOS:01CE
+HANDLER_CIF			  Word	 DADOS:01D2
+HANDLER_DIC			  Word	 DADOS:01D0
+I				  Word	 DADOS:007E
+INCREMENTA_A_B			  Near	 CODIGO:0114
+INICIO				  Near	 CODIGO:0000
+J				  Word	 DADOS:0080
+K				  Word	 DADOS:0082
+LACO1				  Near	 CODIGO:0077
+LACO2				  Near	 CODIGO:00A5
+LACO3				  Near	 CODIGO:00B5
+LF				  Number 000A
+MSG0				  Byte	 DADOS:0221
+MSG1				  Byte	 DADOS:0247
+MSG2				  Byte	 DADOS:0271
+MSG3				  Byte	 DADOS:02AB
+MSG4				  Byte	 DADOS:02DB
+NAO_ACHOU			  Byte	 DADOS:031E
+NOME_CIF			  Byte	 DADOS:00E8
+NOME_DIC			  Byte	 DADOS:0084
+N_LINHAS			  Word	 DADOS:021D
+PRINTF2				  Near	 CODIGO:020D
+PRINTF4				  Near	 CODIGO:0225
+PUTS				  Near	 CODIGO:0170
+SCANF				  Near	 CODIGO:0175
+SCANF_BACKSPACE			  Near	 CODIGO:018A
+SCANF_CONTINUA			  Near	 CODIGO:019E
+SCANF_ENTRADA			  Near	 CODIGO:0177
+TABELA				  Byte	 DADOS:0203
+TAMANHO				  Word	 DADOS:01FD
+TAMANHO_CIF			  Word	 DADOS:01FF
+TAMANHO_DIC			  Word	 DADOS:0201
+TAM_ARQ_CIF			  Word	 DADOS:01D6
+TAM_ARQ_DIC			  Word	 DADOS:01D4
+X				  Byte	 DADOS:003D
+Y				  Byte	 DADOS:0000
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  0337 Para	  none
+DADOS				  16  032F Para	  none
+PILHA				  16  0100 Para	  Stack
+

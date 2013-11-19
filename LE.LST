@@ -1,0 +1,368 @@
+Turbo Assembler	 Version 3.2	    11/19/13 18:49:18	    Page 1
+le.ASM
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      4	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      5	      =0008		     BS		       EQU    08H ; caractere ASCII "Backspace"
+      6
+      7				     ; SEGMENTO	DE DADOS DO PROGRAMA
+      8	0000			     dados     segment
+      9	0000  3D*(??)		     Y			     db	61 dup (?)
+     10	003D  3D*(??)		     X			     db	61 dup (?)
+     11	007A  0001		     a			     dw	1
+     12	007C  0000		     b			     dw	0
+     13	007E  0000		     i			     dw	0
+     14	0080  0000		     j			     dw	0
+     15	0082  0000		     k			     dw	0
+     16	0084  64*(??)		     nome_dic	     db	100 dup	(?)
+     17	00E8  64*(??)		     nome_cif	     db	100 dup	(?)
+     18	014C  1F*(??)		     buffer	     db	31  dup	(?)
+     19	016B  7918*(??)		     dicionario	     db	31000 dup (?)
+     20	7A83  74 65 78 74 6F 2E	74+  arquivo	     db	'texto.txt',0
+     21	      78 74 00
+     22	7A8D  ????		     ptr_dic	     dw	?
+     23	7A8F  ????		     buffer_ptr	     dw	?
+     24	7A91  ????		     handler	     dw	?
+     25	7A93  ????		     handler_dic     dw	?
+     26	7A95  ????		     handler_cif     dw	?
+     27	7A97  ????		     tam_arq_dic     dw	?
+     28	7A99  ????		     tam_arq_cif dw ?
+     29	7A9B  45 52 52 4F 3A 20	4F+  erro	     db	'ERRO: O arquivo nao foi encontrado',CR,LF,'$'
+     30	      20 61 72 71 75 69	76+
+     31	      6F 20 6E 61 6F 20	66+
+     32	      6F 69 20 65 6E 63	6F+
+     33	      6E 74 72 61 64 6F	0D+
+     34	      0A 24
+     35	7AC0  0000		     tamanho	     dw	0
+     36	7AC2  0000		     tamanho_cif dw 0
+     37	7AC4  0000		     tamanho_dic dw 0
+     38	7AC6  00 01 00 09 00 15	00+  tabela	     db	0,1,0,9,0,21,0,15,0,3,0,19,0,0,0,7,0,23,0,11,0,5,0,17,0,25
+     39	      0F 00 03 00 13 00	00+
+     40	      00 07 00 17 00 0B	00+
+     41	      05 00 11 00 19
+     42	7AE0  0000		     n_linhas	     dw	0
+     43	7AE2  0000		     achou	     dw	0
+     44	7AE4  4D 61 72 63 6F 73	20+  msg0	     db	'Marcos	Henrique Backes	- 00228483',CR,LF,CR,LF,'$'
+     45	      48 65 6E 72 69 71	75+
+     46	      65 20 42 61 63 6B	65+
+     47	      73 20 2D 20 30 30	32+
+     48	      32 38 34 38 33 0D	0A+
+     49	      0D 0A 24
+     50	7B0A  44 69 67 69 74 65	20+  msg1	     db	'Digite	o nome do arquivo de dicionario:',CR,LF,'$'
+     51	      6F 20 6E 6F 6D 65	20+
+     52	      64 6F 20 61 72 71	75+
+     53	      69 76 6F 20 64 65	20+
+     54	      64 69 63 69 6F 6E	61+
+     55	      72 69 6F 3A 0D 0A	24
+     56	7B34  41 72 71 75 69 76	6F+  msg2	     db	'Arquivo aberto	com sucesso.',CR,LF,'Numero de palavras	validas: $'
+     57	      20 61 62 65 72 74	6F+
+Turbo Assembler	 Version 3.2	    11/19/13 18:49:18	    Page 2
+le.ASM
+
+
+
+     58	      20 63 6F 6D 20 73	75+
+     59	      63 65 73 73 6F 2E	0D+
+     60	      0A 4E 75 6D 65 72	6F+
+     61	      20 64 65 20 70 61	6C+
+     62	      61 76 72 61 73 20	76+
+     63	      61 6C 69 64 61 73	3A+
+     64	      20 24
+     65	7B6E  0D 0A 44 69 67 69	74+  msg3	     db	CR,LF,'Digite o	nome do	arquivo	com texto cifrado:',CR,LF,'$'
+     66	      65 20 6F 20 6E 6F	6D+
+     67	      65 20 64 6F 20 61	72+
+     68	      71 75 69 76 6F 20	63+
+     69	      6F 6D 20 74 65 78	74+
+     70	      6F 20 63 69 66 72	61+
+     71	      64 6F 3A 0D 0A 24
+     72	7B9E  41 72 71 75 69 76	6F+  msg4	     db	'Arquivo aberto	com sucesso',CR,LF,'Numero de frases validas: $'
+     73	      20 61 62 65 72 74	6F+
+     74	      20 63 6F 6D 20 73	75+
+     75	      63 65 73 73 6F 0D	0A+
+     76	      4E 75 6D 65 72 6F	20+
+     77	      64 65 20 66 72 61	73+
+     78	      65 73 20 76 61 6C	69+
+     79	      64 61 73 3A 20 24
+     80	7BD5  61 3D 24		     decifrado_a     db	'a=$'
+     81	7BD8  20 62 3D 24	     decifrado_b     db	' b=$'
+     82	7BDC  20 24		     espaco	     db	' $'
+     83	7BDE  0D 0A 24		     barra_n	     db	CR,LF,'$'
+     84	7BE1  4E 61 6F 20 65 6E	63+  nao_achou	     db	'Nao encontrado: $'
+     85	      6F 6E 74 72 61 64	6F+
+     86	      3A 20 24
+     87	7BF2			     dados     ends
+     88
+     89				     ; SEGMENTO	DE PILHA DO PROGRAMA
+     90	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     91	0000  80*(????)			      dw     128 dup(?)
+     92	0100			     pilha    ends
+     93
+     94				     ; SEGMENTO	DE CÓDIGO DO PROGRAMA
+     95	0000			     codigo   segment
+     96	0000			     inicio:	     ; CS e IP sao inicializados com este endereco
+     97	0000  B8 0000s			     mov	 ax,dados	    ; inicializa DS
+     98	0003  8E D8			     mov     ds,ax		; com endereco do segmento DADOS
+     99	0005  8E C0			     mov     es,ax		; idem em ES
+    100				     ; fim da carga inicial dos	registradores de segmento
+    101	0007  BA 7A83r				     lea	     dx,arquivo
+    102	000A  BF 016Br				     lea	     di,dicionario
+    103	000D  E8 0032				     call    le_arquivo
+    104	0010  E8 00C1				     call    printf4
+    105	0013  B8 016Br				     lea	     ax,dicionario
+    106	0016  A3 7A8Dr				     mov	     ptr_dic,ax
+    107	0019  8B 36 7A8Dr			     mov	     si,ptr_dic
+    108	001D  BF 014Cr				     lea	     di,buffer
+    109	0020  E8 0095				     call    prox_dic
+    110	0023  89 36 7A8Dr			     mov	     ptr_dic,si
+    111	0027  BA 014Cr				     lea	     dx,buffer
+    112	002A  E8 00A2				     call    puts
+    113	002D  8B 36 7A8Dr			     mov	     si,ptr_dic
+    114	0031  BF 014Cr				     lea	     di,buffer
+Turbo Assembler	 Version 3.2	    11/19/13 18:49:18	    Page 3
+le.ASM
+
+
+
+    115	0034  E8 0081				     call    prox_dic
+    116	0037  BA 014Cr				     lea	     dx,buffer
+    117	003A  E8 0092				     call    puts
+    118	003D  B8 4C00				     fim:     mov    ax,4c00h ;	funcao retornar	ao DOS no AH
+    119							      ;	codigo de retorno 0 no AL
+    120	0040  CD 21			      int    21h      ;	chamada	do DOS
+    121
+    122				     ; le_arquivo: le as linhas	do arquivo que tem mais	do que 5
+    123				     ; caracteres e as armazena	em uma string, separando as linhas por
+    124				     ; um cifrao.
+    125				     ; - Chamada da função:
+    126				     ; lea dx,<nome_arq>
+    127				     ; lea di,<string>
+    128				     ; mov <n_linhas>,ax
+    129	0042			     le_arquivo	proc
+    130				     ; abre arquivo para leitura
+    131	0042  B4 3D			     mov    ah,3dh
+    132	0044  B0 00			     mov    al,0
+    133	0046  CD 21			     int     21h
+    134	0048  73 09			     jnc    le_arquivo_abriu_ok
+    135	004A  BA 7A9Br			     lea    dx,erro
+    136	004D  B4 09			     mov    ah,9
+    137	004F  CD 21			     int    21h
+    138	0051  F9				     stc
+    139	0052  C3			     ret
+    140	0053			     le_arquivo_abriu_ok:
+    141	0053  8B D8				     mov     bx,ax
+    142	0055  C7 06 7AE0r 0000			     mov     n_linhas,0
+    143	005B			     le_arquivo_pre_laco:
+    144	005B  C7 06 7AC0r 0000			     mov     tamanho,0
+    145	0061			     le_arquivo_laco:
+    146	0061  B4 3F				     mov     ah,3fh	 ; le um caracter do arquivo
+    147	0063  B9 0001			     mov     cx,1
+    148	0066  8B D7				     mov     dx,di
+    149	0068  CD 21			     int     21h
+    150	006A  8B FA				     mov     di,dx
+    151	006C  3B C1			     cmp     ax,cx
+    152	006E  75 3B			     jne     le_arquivo_EOF
+    153	0070			     le_arquivo_teste_enter:
+    154	0070  8A 15			     mov     dl,[di]
+    155	0072  80 FA 0D			     cmp     dl, CR
+    156	0075  74 EA			     je	     le_arquivo_laco
+    157	0077  80 FA 0A				     cmp     dl, LF
+    158	007A  74 17				     je	     le_arquivo_enter
+    159	007C			     le_arquivo_teste_minuscula:
+    160	007C  80 FA 61				     cmp     dl,'a'
+    161	007F  7C 0A				     jl	     le_arquivo_incrementa
+    162	0081  80 FA 7A				     cmp     dl,'z'
+    163	0084  7F 05				     jg	     le_arquivo_incrementa
+    164	0086			     le_arquivo_minuscula:
+    165	0086  80 EA 20				     sub     dl,32
+    166	0089  88 15				     mov     byte ptr [di],dl
+    167	008B			     le_arquivo_incrementa:
+    168	008B  83 06 7AC0r 01			     add	     tamanho,1
+    169	0090  47				     inc	     di
+    170	0091  EB CE				     jmp     le_arquivo_laco
+    171	0093			     le_arquivo_enter:
+Turbo Assembler	 Version 3.2	    11/19/13 18:49:18	    Page 4
+le.ASM
+
+
+
+    172	0093  83 3E 7AC0r 05			     cmp	     tamanho,5
+    173	0098  7D 06				     jge	     le_arquivo_fim_linha
+    174	009A  2B 3E 7AC0r			     sub	     di,tamanho
+    175	009E  EB BB				     jmp	     le_arquivo_pre_laco
+    176	00A0			     le_arquivo_fim_linha:
+    177	00A0  C6 05 24				     mov     byte ptr [di],'$'
+    178	00A3  47				     inc	     di
+    179	00A4  83 06 7AE0r 01			     add	     n_linhas,1
+    180	00A9  EB B0				     jmp	     le_arquivo_pre_laco
+    181	00AB			     le_arquivo_EOF:
+    182	00AB  C6 05 24				     mov     byte ptr [di],'$'
+    183	00AE  B4 3E				     mov ah,3eh	      ;	fecha arquivo
+    184	00B0  CD 21			     int 21h
+    185	00B2  A1 7AE0r				     mov	     ax,n_linhas
+    186	00B5  C3				     ret
+    187	00B6  F8				     clc
+    188	00B7  C3				     ret
+    189	00B8					     endp
+    190
+    191				     ; - Chamada da função
+    192				     ;	     lea si,origem
+    193				     ;	     lea di,destino
+    194				     ;	     call prox_dic
+    195				     ;	     mov     <tam_palavra>,ax
+    196				     ;	     mov     <ptr_dic>,si
+    197
+    198	00B8			     prox_dic proc
+    199	00B8  87 FE			     xchg    di,si
+    200	00BA  B9 001F			     mov	     cx,31
+    201	00BD  B0 24			     mov	     al,'$'
+    202	00BF  F2> AE			     repne scasb
+    203	00C1  87 FE			     xchg    di,si
+    204	00C3  B8 001F			     mov	     ax,31
+    205	00C6  2B C1			     sub	     ax,cx
+    206	00C8  8B C8			     mov	     cx,ax
+    207	00CA  2B F8			     sub	     di,ax
+    208	00CC  F3> A4			     rep     movsb
+    209	00CE  C3			     ret
+    210	00CF				     endp
+    211				     ; puts: função que imprime uma string na	tela até encontrar '$'
+    212				     ; - Chamada da função:
+    213				     ;	     lea dx,<end_inic_string>
+    214				     ;	     call puts
+    215	00CF			     puts    proc
+    216	00CF  B4 09				     mov     ah,9
+    217	00D1  CD 21				     int     21H
+    218	00D3  C3				     ret
+    219	00D4					     endp
+    220				     ; printf4:	Imprime	um valor de 4 dígitos na tela
+    221				     ; -Chamada	da função:
+    222				     ; mov ax,<número>
+    223				     ; call printf
+    224	00D4			     printf4 proc
+    225	00D4  BA 0000				     mov     dx,0
+    226	00D7  BB 03E8				     mov     bx,1000
+    227	00DA  F7 F3				     div     bx
+    228	00DC  52				     push    dx
+Turbo Assembler	 Version 3.2	    11/19/13 18:49:18	    Page 5
+le.ASM
+
+
+
+    229	00DD  8A D0				     mov     dl,al
+    230	00DF  80 C2 30				     add     dl,'0'
+    231	00E2  B4 02				     mov     ah,2
+    232	00E4  CD 21				     int     21H
+    233	00E6  58				     pop     ax
+    234	00E7  B3 64				     mov	     bl,100
+    235	00E9  F6 F3				     div	     bl
+    236	00EB  50				     push    ax
+    237	00EC  8A D0				     mov     dl,al
+    238	00EE  80 C2 30				     add     dl,'0'
+    239	00F1  8B C2				     mov	     ax,dx
+    240	00F3  B4 02				     mov     ah,2
+    241	00F5  CD 21				     int     21H
+    242	00F7  58				     pop     ax
+    243	00F8  8A C4				     mov	     al,ah
+    244	00FA  B4 00				     mov	     ah,0
+    245	00FC  B3 0A				     mov	     bl,10
+    246	00FE  F6 F3				     div     bl
+    247	0100  04 30				     add     al,'0'
+    248	0102  8A D0				     mov     dl,al
+    249	0104  50				     push    ax
+    250	0105  B4 02				     mov     ah,2
+    251	0107  CD 21				     int     21H
+    252	0109  58				     pop     ax
+    253	010A  80 C4 30				     add     ah,'0'
+    254	010D  8A D4				     mov     dl,ah
+    255	010F  B4 02				     mov     ah,2
+    256	0111  CD 21				     int     21H
+    257	0113  C3				     ret
+    258	0114					     endp
+    259	0114			     codigo   ends
+    260					      end    inicio
+Turbo Assembler	 Version 3.2	    11/19/13 18:49:18	    Page 6
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/19/13"
+??FILENAME			  Text	 "le	  "
+??TIME				  Text	 "18:49:18"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 LE
+@WORDSIZE			  Text	 2
+A				  Word	 DADOS:007A
+ACHOU				  Word	 DADOS:7AE2
+ARQUIVO				  Byte	 DADOS:7A83
+B				  Word	 DADOS:007C
+BARRA_N				  Byte	 DADOS:7BDE
+BS				  Number 0008
+BUFFER				  Byte	 DADOS:014C
+BUFFER_PTR			  Word	 DADOS:7A8F
+CR				  Number 000D
+DECIFRADO_A			  Byte	 DADOS:7BD5
+DECIFRADO_B			  Byte	 DADOS:7BD8
+DICIONARIO			  Byte	 DADOS:016B
+ERRO				  Byte	 DADOS:7A9B
+ESPACO				  Byte	 DADOS:7BDC
+FIM				  Near	 CODIGO:003D
+HANDLER				  Word	 DADOS:7A91
+HANDLER_CIF			  Word	 DADOS:7A95
+HANDLER_DIC			  Word	 DADOS:7A93
+I				  Word	 DADOS:007E
+INICIO				  Near	 CODIGO:0000
+J				  Word	 DADOS:0080
+K				  Word	 DADOS:0082
+LE_ARQUIVO			  Near	 CODIGO:0042
+LE_ARQUIVO_ABRIU_OK		  Near	 CODIGO:0053
+LE_ARQUIVO_ENTER		  Near	 CODIGO:0093
+LE_ARQUIVO_EOF			  Near	 CODIGO:00AB
+LE_ARQUIVO_FIM_LINHA		  Near	 CODIGO:00A0
+LE_ARQUIVO_INCREMENTA		  Near	 CODIGO:008B
+LE_ARQUIVO_LACO			  Near	 CODIGO:0061
+LE_ARQUIVO_MINUSCULA		  Near	 CODIGO:0086
+LE_ARQUIVO_PRE_LACO		  Near	 CODIGO:005B
+LE_ARQUIVO_TESTE_ENTER		  Near	 CODIGO:0070
+LE_ARQUIVO_TESTE_MINUSCULA	  Near	 CODIGO:007C
+LF				  Number 000A
+MSG0				  Byte	 DADOS:7AE4
+MSG1				  Byte	 DADOS:7B0A
+MSG2				  Byte	 DADOS:7B34
+MSG3				  Byte	 DADOS:7B6E
+MSG4				  Byte	 DADOS:7B9E
+NAO_ACHOU			  Byte	 DADOS:7BE1
+NOME_CIF			  Byte	 DADOS:00E8
+NOME_DIC			  Byte	 DADOS:0084
+N_LINHAS			  Word	 DADOS:7AE0
+PRINTF4				  Near	 CODIGO:00D4
+PROX_DIC			  Near	 CODIGO:00B8
+PTR_DIC				  Word	 DADOS:7A8D
+Turbo Assembler	 Version 3.2	    11/19/13 18:49:18	    Page 7
+Symbol Table
+
+
+
+PUTS				  Near	 CODIGO:00CF
+TABELA				  Byte	 DADOS:7AC6
+TAMANHO				  Word	 DADOS:7AC0
+TAMANHO_CIF			  Word	 DADOS:7AC2
+TAMANHO_DIC			  Word	 DADOS:7AC4
+TAM_ARQ_CIF			  Word	 DADOS:7A99
+TAM_ARQ_DIC			  Word	 DADOS:7A97
+X				  Byte	 DADOS:003D
+Y				  Byte	 DADOS:0000
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  0114 Para	  none
+DADOS				  16  7BF2 Para	  none
+PILHA				  16  0100 Para	  Stack
+

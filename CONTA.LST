@@ -1,0 +1,164 @@
+Turbo Assembler	 Version 3.2	    11/14/13 24:20:35	    Page 1
+conta.ASM
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      4	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      5
+      6				     ; SEGMENTO	DE DADOS DO PROGRAMA
+      7	0000			     dados     segment
+      8	0000  74 65 78 74 6F 00	     nome      db 'texto',0
+      9	0006  80*(??)		     buffer    db 128 dup (?)
+     10	0086  ????		     buffer_ptr	dw ?
+     11	0088  ????		     handler   dw ?
+     12	008A  6E 61 6F 20 64 65	75+  erro      db 'nao deu pra abrir$'
+     13	      20 70 72 61 20 61	62+
+     14	      72 69 72 24
+     15	009C  0000		     tamanho   dw 0
+     16	009E  0000		     n_linhas  dw 0
+     17	00A0			     dados     ends
+     18
+     19				     ; SEGMENTO	DE PILHA DO PROGRAMA
+     20	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     21	0000  80*(????)			      dw     128 dup(?)
+     22	0100			     pilha    ends
+     23
+     24				     ; SEGMENTO	DE CÓDIGO DO PROGRAMA
+     25	0000			     codigo   segment
+     26	0000			     inicio:	     ; CS e IP sao inicializados com este endereco
+     27	0000  B8 0000s			      mov    ax,dados		; inicializa DS
+     28	0003  8E D8			      mov    ds,ax		; com endereco do segmento DADOS
+     29	0005  8E C0			      mov    es,ax		; idem em ES
+     30				     ; fim da carga inicial dos	registradores de segmento
+     31	0007  BA 0000r				      lea    dx,nome
+     32	000A  E8 000D				      call   conta_l
+     33	000D  72 06				      jc	     fim
+     34	000F  A1 009Er				      mov    ax,n_linhas
+     35	0012  E8 0068				      call   printf
+     36	0015  B8 4C00		     fim:     mov    ax,4c00h ;	funcao retornar	ao DOS no AH
+     37							      ;	codigo de retorno 0 no AL
+     38	0018  CD 21			      int    21h      ;	chamada	do DOS
+     39				     ; conta_l:	abre o arquivo,	conta quantas linhas tem mais caracteres e
+     40				     ; armazena	em n_linhas, depois fecha o arquivo. Se	não encontrar o arquivo
+     41				     ; imprime mensagem	de erro	na tela.
+     42				     ; - Chamada da função:
+     43				     ;	     lea dx,<string_nome_arq>
+     44				     ;	     call conta_l
+     45	001A			     conta_l	     proc
+     46				     ; abre arquivo para leitura
+     47	001A  B4 3D			      mov    ah,3dh
+     48	001C  B0 00			      mov    al,0
+     49	001E  CD 21			      int    21h
+     50	0020  73 09			      jnc    conta_l_abriu_ok
+     51	0022  BA 008Ar			      lea    dx,erro
+     52	0025  B4 09			      mov    ah,9
+     53	0027  CD 21			      int    21h
+     54	0029  F9				      stc
+     55	002A  C3			      ret
+     56	002B			     conta_l_abriu_ok:
+     57	002B  A3 0088r				      mov handler,ax
+Turbo Assembler	 Version 3.2	    11/14/13 24:20:35	    Page 2
+conta.ASM
+
+
+
+     58	002E  C7 06 009Er 0000			      mov n_linhas,0
+     59	0034			     conta_l_pre_conta_l_laco:
+     60	0034  C7 06 009Cr 0000			      mov tamanho,0
+     61	003A  B4 3F		     conta_l_laco:    mov ah,3fh      ;	le um caracter do arquivo
+     62	003C  8B 1E 0088r		      mov bx,handler
+     63	0040  B9 0001			      mov cx,1
+     64	0043  BA 0006r				      lea dx,buffer
+     65	0046  CD 21			      int 21h
+     66	0048  3B C1			      cmp ax,cx
+     67	004A  75 23			      jne conta_l_EOF
+     68	004C			     conta_l_teste_cslf:
+     69	004C  8A 16 0006r		      mov dl,buffer
+     70	0050  80 FA 0D			      cmp dl, CR
+     71	0053  74 E5			      je  conta_l_laco
+     72	0055  80 FA 0A				      cmp dl, LF
+     73	0058  74 07				      je  conta_l_cslf
+     74	005A			     conta_l_nao_eh_cslf:
+     75	005A  83 06 009Cr 01			      add tamanho,1
+     76	005F  EB D9				      jmp conta_l_laco
+     77	0061			     conta_l_cslf:
+     78	0061  83 3E 009Cr 05			      cmp tamanho,5
+     79	0066  7C CC				      jl  conta_l_pre_conta_l_laco
+     80	0068  83 06 009Er 01			      add n_linhas,1
+     81	006D  EB C5				      jmp conta_l_pre_conta_l_laco
+     82	006F			     conta_l_EOF:
+     83	006F  83 3E 009Cr 05			      cmp tamanho,5
+     84	0074  7C 05				      jl  conta_l_fim
+     85	0076  83 06 009Er 01			      add n_linhas,1
+     86	007B			     conta_l_fim:
+     87	007B  F8				      clc
+     88	007C  C3				      ret
+     89	007D					     endp
+     90				     ; printf: Imprime um valor	de 2 dígitos na tela
+     91				     ; - Chamada da função:
+     92				     ;	 mov ax,<número>
+     93				     ;	 call printf
+     94	007D			     printf  proc
+     95	007D  B3 0A				     mov bl,10
+     96	007F  F6 F3				     div bl
+     97	0081  04 30				     add al,'0'
+     98	0083  8A D0				     mov dl,al
+     99	0085  50				     push ax
+    100	0086  B4 02				     mov ah,2
+    101	0088  CD 21				     int 21H
+    102	008A  58				     pop ax
+    103	008B  80 C4 30				     add ah,'0'
+    104	008E  8A D4				     mov dl,ah
+    105	0090  B4 02				     mov ah,2
+    106	0092  CD 21				     int 21H
+    107	0094  C3				     ret
+    108	0095					     endp
+    109	0095			     codigo   ends
+    110					      end    inicio
+Turbo Assembler	 Version 3.2	    11/14/13 24:20:35	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/14/13"
+??FILENAME			  Text	 "conta	  "
+??TIME				  Text	 "24:20:35"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 CONTA
+@WORDSIZE			  Text	 2
+BUFFER				  Byte	 DADOS:0006
+BUFFER_PTR			  Word	 DADOS:0086
+CONTA_L				  Near	 CODIGO:001A
+CONTA_L_ABRIU_OK		  Near	 CODIGO:002B
+CONTA_L_CSLF			  Near	 CODIGO:0061
+CONTA_L_EOF			  Near	 CODIGO:006F
+CONTA_L_FIM			  Near	 CODIGO:007B
+CONTA_L_LACO			  Near	 CODIGO:003A
+CONTA_L_NAO_EH_CSLF		  Near	 CODIGO:005A
+CONTA_L_PRE_CONTA_L_LACO	  Near	 CODIGO:0034
+CONTA_L_TESTE_CSLF		  Near	 CODIGO:004C
+CR				  Number 000D
+ERRO				  Byte	 DADOS:008A
+FIM				  Near	 CODIGO:0015
+HANDLER				  Word	 DADOS:0088
+INICIO				  Near	 CODIGO:0000
+LF				  Number 000A
+NOME				  Byte	 DADOS:0000
+N_LINHAS			  Word	 DADOS:009E
+PRINTF				  Near	 CODIGO:007D
+TAMANHO				  Word	 DADOS:009C
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  0095 Para	  none
+DADOS				  16  00A0 Para	  none
+PILHA				  16  0100 Para	  Stack
+

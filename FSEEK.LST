@@ -1,0 +1,206 @@
+Turbo Assembler	 Version 3.2	    11/17/13 20:14:13	    Page 1
+fseek.ASM
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      4	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      5
+      6				     ; SEGMENTO	DE DADOS DO PROGRAMA
+      7	0000			     dados     segment
+      8	0000  74 65 78 74 6F 2E	74+  nome      db 'texto.txt',0
+      9	      78 74 00
+     10	000A  1E*(??)		     buffer    db 30 dup (?)
+     11	0028  ????		     handler   dw ?
+     12	002A  6E 61 6F 20 64 65	75+  erro      db 'nao deu pra abrir$'
+     13	      20 70 72 61 20 61	62+
+     14	      72 69 72 24
+     15	003C  0000		     tamanho   dw 0
+     16	003E  0000		     tam_str   dw 0
+     17	0040			     dados     ends
+     18
+     19				     ; SEGMENTO	DE PILHA DO PROGRAMA
+     20	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     21	0000  80*(????)			      dw     128 dup(?)
+     22	0100			     pilha    ends
+     23
+     24				     ; SEGMENTO	DE CÓDIGO DO PROGRAMA
+     25	0000			     codigo   segment
+     26	0000			     inicio:	     ; CS e IP sao inicializados com este endereco
+     27	0000  B8 0000s			      mov    ax,dados		; inicializa DS
+     28	0003  8E D8			      mov    ds,ax		; com endereco do segmento DADOS
+     29	0005  8E C0			      mov    es,ax		; idem em ES
+     30				     ; fim da carga inicial dos	registradores de segmento
+     31	0007  BA 0000r				     lea	     dx,nome
+     32	000A  E8 0092				     call    fopen
+     33	000D  A3 0028r				     mov	     handler,ax
+     34
+     35	0010  8B 1E 0028r			     mov	     bx,handler
+     36	0014  BF 000Ar				     lea	     di,buffer
+     37	0017  E8 0030				     call    fgets
+     38	001A  A3 003Er				     mov	     tam_str,ax
+     39	001D  BA 000Ar				     lea     dx,buffer
+     40	0020  E8 0088				     call    puts
+     41
+     42	0023  8B 1E 0028r			     mov	     bx,handler
+     43	0027  E8 0013				     call    fseek_ini
+     44
+     45	002A  8B 1E 0028r			     mov	     bx,handler
+     46	002E  BF 000Ar				     lea	     di,buffer
+     47	0031  E8 0016				     call    fgets
+     48	0034  A3 003Er				     mov	     tam_str,ax
+     49	0037  BA 000Ar				     lea     dx,buffer
+     50	003A  E8 006E				     call    puts
+     51
+     52
+     53				     ; fseek_ini: muda a posição do arquivo para o inicio
+     54				     ; - Chamada da função:
+     55				     ;	     mov     bx,<handler>
+     56				     ;	     call fseek_ini
+     57	003D			     fseek_ini proc
+Turbo Assembler	 Version 3.2	    11/17/13 20:14:13	    Page 2
+fseek.ASM
+
+
+
+     58	003D  B4 42				     mov	     ah,42H
+     59	003F  B0 00				     mov	     al,0
+     60	0041  B9 0000				     mov	     cx,0
+     61	0044  BA 0000				     mov	     dx,0
+     62	0047  CD 21				     int	     21H
+     63	0049  C3				     ret
+     64	004A					     endp
+     65
+     66
+     67				     ; fgets: lê uma linha válida do arquivo
+     68				     ; - Chamada da função:
+     69				     ;	     mov bx,<handler>
+     70				     ;	     lea di,<buffer>
+     71				     ;	     call fgets
+     72				     ;	     mov <var_tamanho>,ax
+     73	004A			     fgets   proc
+     74	004A			     fgets_pre_laco:
+     75	004A  C7 06 003Cr 0000			     mov	     tamanho,0
+     76	0050			     fgets_laco:
+     77	0050  B4 3F				     mov     ah,3fh	 ; le um caracter do arquivo
+     78	0052  B9 0001			     mov     cx,1
+     79	0055  8B D7				     mov     dx,di
+     80	0057  CD 21			     int     21h
+     81	0059  8B FA				     mov     di,dx
+     82	005B  3B C1			     cmp     ax,cx
+     83	005D  75 38			     jne     fgets_EOF
+     84	005F			     fgets_teste_enter:
+     85	005F  8A 15			     mov     dl,[di]
+     86	0061  80 FA 0D			     cmp     dl, CR
+     87	0064  74 EA			     je	     fgets_laco
+     88	0066  80 FA 0A				     cmp     dl, LF
+     89	0069  74 17				     je	     fgets_enter
+     90	006B			     fgets_teste_minuscula:
+     91	006B  80 FA 61				     cmp     dl,'a'
+     92	006E  7C 0A				     jl	     fgets_incrementa
+     93	0070  80 FA 7A				     cmp     dl,'z'
+     94	0073  7F 05				     jg	     fgets_incrementa
+     95	0075			     fgets_minuscula:
+     96	0075  80 EA 20				     sub     dl,32
+     97	0078  88 15				     mov     byte ptr [di],dl
+     98	007A			     fgets_incrementa:
+     99	007A  83 06 003Cr 01			     add	     tamanho,1
+    100	007F  47				     inc	     di
+    101	0080  EB CE				     jmp     fgets_laco
+    102	0082			     fgets_enter:
+    103	0082  83 3E 003Cr 05			     cmp	     tamanho,5
+    104	0087  7D 06				     jge	     fim_enter
+    105	0089  2B 3E 003Cr			     sub	     di,tamanho
+    106	008D  EB BB				     jmp	     fgets_pre_laco
+    107	008F			     fim_enter:
+    108	008F  C6 05 24				     mov     byte ptr [di],'$'
+    109	0092  A1 003Cr				     mov     ax,tamanho
+    110	0095  F8				     clc
+    111	0096  C3				     ret
+    112	0097			     fgets_EOF:
+    113	0097  C6 05 24				     mov     byte ptr [di],'$'
+    114	009A  A1 003Cr				     mov     ax,tamanho
+Turbo Assembler	 Version 3.2	    11/17/13 20:14:13	    Page 3
+fseek.ASM
+
+
+
+    115	009D  F9				     stc
+    116	009E  C3				     ret
+    117	009F					     endp
+    118				     ; fopen: abre um arquivo, nao retorna mensagem de erro,
+    119				     ; o nome do arquivo deve estar correto.
+    120				     ; - Chamada da função:
+    121				     ;	     lea dx,<str_nome_arq>
+    122				     ;	     call fopen
+    123				     ;	     mov <handler>,ax
+    124	009F			     fopen   proc
+    125	009F  B4 3D			     mov    ah,3dh
+    126	00A1  B0 00			     mov    al,0
+    127	00A3  CD 21			     int     21h
+    128	00A5  C3			     ret
+    129	00A6					     endp
+    130				     ; fclose: fecha um	arquivo	previamente aberto
+    131				     ; - Chamada da função:
+    132				     ;	     mov bx,<handler>
+    133				     ;	     call fclose
+    134	00A6			     fclose  proc
+    135	00A6  B4 3E				     mov ah,3eh	      ;	fecha arquivo
+    136	00A8  CD 21			     int 21h
+    137	00AA  C3				     ret
+    138	00AB					     endp
+    139	00AB			     puts    proc
+    140	00AB  B4 09				     mov     ah,9
+    141	00AD  CD 21				     int     21H
+    142	00AF  C3				     ret
+    143	00B0					     endp
+    144	00B0			     codigo  ends
+    145					     end    inicio
+Turbo Assembler	 Version 3.2	    11/17/13 20:14:13	    Page 4
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/17/13"
+??FILENAME			  Text	 "fseek	  "
+??TIME				  Text	 "20:14:13"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 FSEEK
+@WORDSIZE			  Text	 2
+BUFFER				  Byte	 DADOS:000A
+CR				  Number 000D
+ERRO				  Byte	 DADOS:002A
+FCLOSE				  Near	 CODIGO:00A6
+FGETS				  Near	 CODIGO:004A
+FGETS_ENTER			  Near	 CODIGO:0082
+FGETS_EOF			  Near	 CODIGO:0097
+FGETS_INCREMENTA		  Near	 CODIGO:007A
+FGETS_LACO			  Near	 CODIGO:0050
+FGETS_MINUSCULA			  Near	 CODIGO:0075
+FGETS_PRE_LACO			  Near	 CODIGO:004A
+FGETS_TESTE_ENTER		  Near	 CODIGO:005F
+FGETS_TESTE_MINUSCULA		  Near	 CODIGO:006B
+FIM_ENTER			  Near	 CODIGO:008F
+FOPEN				  Near	 CODIGO:009F
+FSEEK_INI			  Near	 CODIGO:003D
+HANDLER				  Word	 DADOS:0028
+INICIO				  Near	 CODIGO:0000
+LF				  Number 000A
+NOME				  Byte	 DADOS:0000
+PUTS				  Near	 CODIGO:00AB
+TAMANHO				  Word	 DADOS:003C
+TAM_STR				  Word	 DADOS:003E
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  00B0 Para	  none
+DADOS				  16  0040 Para	  none
+PILHA				  16  0100 Para	  Stack
+

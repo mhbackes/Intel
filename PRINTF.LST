@@ -1,0 +1,82 @@
+Turbo Assembler	 Version 3.2	    11/13/13 19:51:16	    Page 1
+printf.asm
+
+
+
+      1						     assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3
+      4	0000			     dados    segment
+      5
+      6	0000  ??		     char     db     ?
+      7	0001  2C 20 71 75 65 20	6E+	      db     ',	que nao	e'' um digito nem uma letra !$'
+      8	      61 6F 20 65 27 20	75+
+      9	      6D 20 64 69 67 69	74+
+     10	      6F 20 6E 65 6D 20	75+
+     11	      6D 61 20 6C 65 74	72+
+     12	      61 20 21 24
+     13	0028  0039		     a		      dw	     57
+     14	002A			     dados    ends
+     15
+     16	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     17	0000  80*(????)			      dw     128 dup(?)
+     18	0100			     pilha    ends
+     19
+     20	0000			     codigo   segment
+     21	0000			     inicio:
+     22	0000  B8 0000s			     mov    ax,dados
+     23	0003  8E D8			     mov    ds,ax
+     24	0005  8E C0				     mov    es,ax
+     25
+     26	0007  A1 0028r				     mov     ax,a
+     27	000A  E8 0005				     call printf
+     28	000D			     fim:
+     29	000D  B8 4C00			     mov    ax,4c00h
+     30	0010  CD 21			     int    21h
+     31	0012			     printf  proc
+     32	0012  B3 0A				     mov bl,10
+     33	0014  F6 F3				     div bl
+     34	0016  04 30				     add al,'0'
+     35	0018  8A D0				     mov dl,al
+     36	001A  50				     push ax
+     37	001B  B4 02				     mov ah,2
+     38	001D  CD 21				     int 21H
+     39	001F  58				     pop ax
+     40	0020  80 C4 30				     add ah,'0'
+     41	0023  8A D4				     mov dl,ah
+     42	0025  B4 02				     mov ah,2
+     43	0027  CD 21				     int 21H
+     44	0029  C3				     ret
+     45	002A					     endp
+     46
+     47	002A			     codigo   ends
+     48
+     49					      end    inicio
+Turbo Assembler	 Version 3.2	    11/13/13 19:51:16	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/13/13"
+??FILENAME			  Text	 "printf  "
+??TIME				  Text	 "19:51:16"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 PRINTF
+@WORDSIZE			  Text	 2
+A				  Word	 DADOS:0028
+CHAR				  Byte	 DADOS:0000
+FIM				  Near	 CODIGO:000D
+INICIO				  Near	 CODIGO:0000
+PRINTF				  Near	 CODIGO:0012
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  002A Para	  none
+DADOS				  16  002A Para	  none
+PILHA				  16  0100 Para	  Stack
+

@@ -1,0 +1,206 @@
+Turbo Assembler	 Version 3.2	    11/16/13 18:03:39	    Page 1
+decod.ASM
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      4	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      5	      =0008		     BS		       EQU    08H ; caractere ASCII "Backspace"
+      6
+      7				     ; SEGMENTO	DE DADOS DO PROGRAMA
+      8	0000			     dados     segment
+      9	0000  49 4E 46 4F 52 4D	41+  Y			     db	'INFORMATICA',0
+     10	      54 49 43 41 00
+     11	000C  1E*(??)		     X			     db	30 dup (?)
+     12	002A  0009		     a			     dw	9
+     13	002C  05		     b			     db	5
+     14	002D  0000		     i			     dw	0
+     15	002F  00 01 00 09 00 15	00+  tabela	     db	0,1,0,9,0,21,0,15,0,3,0,19,0,0,0,7,0,23,0,11,0,5,0,17,0,25
+     16	      0F 00 03 00 13 00	00+
+     17	      00 07 00 17 00 0B	00+
+     18	      05 00 11 00 19
+     19	0049  002Fr		     tabela_ptr	     dw	offset tabela
+     20	004B  1E*(??)		     nome_dic	     db	30 dup (?)
+     21	0069  1E*(??)		     nome_cif	     db	30 dup (?)
+     22	0087  80*(??)		     buffer	     db	128 dup	(?)
+     23	0107  ????		     buffer_ptr	     dw	?
+     24	0109  ????		     handler	     dw	?
+     25	010B  45 52 52 4F 3A 20	4F+  erro	     db	'ERRO: O arquivo nao foi encontrado',CR,LF,'$'
+     26	      20 61 72 71 75 69	76+
+     27	      6F 20 6E 61 6F 20	66+
+     28	      6F 69 20 65 6E 63	6F+
+     29	      6E 74 72 61 64 6F	0D+
+     30	      0A 24
+     31	0130  0000		     tamanho	     dw	0
+     32	0132  0000		     n_linhas	     dw	0
+     33	0134  4D 61 72 63 6F 73	20+  msg0	     db	'Marcos	Henrique Backes	- 00228483',CR,LF,CR,LF,'$'
+     34	      48 65 6E 72 69 71	75+
+     35	      65 20 42 61 63 6B	65+
+     36	      73 20 2D 20 30 30	32+
+     37	      32 38 34 38 33 0D	0A+
+     38	      0D 0A 24
+     39	015A  44 69 67 69 74 65	20+  msg1	     db	'Digite	o nome do arquivo de dicionario:',CR,LF,'$'
+     40	      6F 20 6E 6F 6D 65	20+
+     41	      64 6F 20 61 72 71	75+
+     42	      69 76 6F 20 64 65	20+
+     43	      64 69 63 69 6F 6E	61+
+     44	      72 69 6F 3A 0D 0A	24
+     45	0184  41 72 71 75 69 76	6F+  msg2	     db	'Arquivo aberto	com sucesso.',CR,LF,'Numero de palavras	validas: $'
+     46	      20 61 62 65 72 74	6F+
+     47	      20 63 6F 6D 20 73	75+
+     48	      63 65 73 73 6F 2E	0D+
+     49	      0A 4E 75 6D 65 72	6F+
+     50	      20 64 65 20 70 61	6C+
+     51	      61 76 72 61 73 20	76+
+     52	      61 6C 69 64 61 73	3A+
+     53	      20 24
+     54	01BE  0D 0A 44 69 67 69	74+  msg3	     db	CR,LF,'Digite o	nome do	arquivo	com texto cifrado:',CR,LF,'$'
+     55	      65 20 6F 20 6E 6F	6D+
+     56	      65 20 64 6F 20 61	72+
+     57	      71 75 69 76 6F 20	63+
+Turbo Assembler	 Version 3.2	    11/16/13 18:03:39	    Page 2
+decod.ASM
+
+
+
+     58	      6F 6D 20 74 65 78	74+
+     59	      6F 20 63 69 66 72	61+
+     60	      64 6F 3A 0D 0A 24
+     61	01EE  41 72 71 75 69 76	6F+  msg4	     db	'Arquivo aberto	com sucesso',CR,LF,'Numero de frases validas: $'
+     62	      20 61 62 65 72 74	6F+
+     63	      20 63 6F 6D 20 73	75+
+     64	      63 65 73 73 6F 0D	0A+
+     65	      4E 75 6D 65 72 6F	20+
+     66	      64 65 20 66 72 61	73+
+     67	      65 73 20 76 61 6C	69+
+     68	      64 61 73 3A 20 24
+     69	0225			     dados     ends
+     70
+     71				     ; SEGMENTO	DE PILHA DO PROGRAMA
+     72	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     73	0000  80*(????)			      dw     128 dup(?)
+     74	0100			     pilha    ends
+     75
+     76				     ; SEGMENTO	DE CÓDIGO DO PROGRAMA
+     77	0000			     codigo   segment
+     78	0000			     inicio:	     ; CS e IP sao inicializados com este endereco
+     79	0000  B8 0000s			     mov	 ax,dados	    ; inicializa DS
+     80	0003  8E D8			     mov     ds,ax		; com endereco do segmento DADOS
+     81	0005  8E C0			     mov     es,ax		; idem em ES
+     82				     ; fim da carga inicial dos	registradores de segmento
+     83	0007  E8 000B				     call    decodifica
+     84	000A  BA 000Cr				     lea	     dx,X
+     85	000D  E8 004A				     call    puts
+     86	0010  B8 4C00				     mov     ax,4c00h ;	funcao retornar	ao DOS no AH
+     87							      ;	codigo de retorno 0 no AL
+     88	0013  CD 21			     int     21h      ;	chamada	do DOS
+     89
+     90
+     91
+     92				     ; decodifica: decodifica a	string Y usando	a cifra	de affine, os valores das chaves
+     93				     ; a, b, tabela, e armazena	em X
+     94				     ; - Chamada da função
+     95				     ;	     call    decodifica
+     96	0015			     decodifica	     proc
+     97	0015  C7 06 002Dr 0000			     mov	     i,0
+     98	001B  BF 000Cr				     lea	     di,X
+     99	001E			     laco:
+    100	001E  B4 00				     mov	     ah,0
+    101	0020  BE 0000r				     lea	     si,Y
+    102	0023  8B 1E 002Dr			     mov	     bx,i
+    103	0027  8A 00				     mov	     al,byte ptr [bx+si+0] ; al	:= Y[i]
+    104	0029  3C 00				     cmp	     al,0
+    105	002B  74 29				     je		     fim
+    106	002D  2C 41				     sub	     al,65
+    107	002F  2A 06 002Cr			     sub	     al,b
+    108	0033  79 02				     jns	     positivo
+    109	0035			     negativo:
+    110	0035  04 1A				     add	     al,26	     ; se Y[i] - b é negativo,	adiciona 26 para    +
+    111				     facilitar a multiplicação
+    112	0037			     positivo:
+    113	0037  BE 002Fr				     lea     si,tabela
+    114	003A  8B 1E 002Ar			     mov	     bx,a
+Turbo Assembler	 Version 3.2	    11/16/13 18:03:39	    Page 3
+decod.ASM
+
+
+
+    115	003E  8A 18				     mov	     bl,byte ptr [bx+si+0] ; bx	:= tabela[a], mesmo que	bx := a^(-1)
+    116	0040  F6 E3				     mul	     bl
+    117	0042  B3 1A				     mov	     bl,26
+    118	0044  F6 F3				     div	     bl
+    119	0046  80 C4 41				     add	     ah,65
+    120	0049  8B 1E 002Dr			     mov	     bx,i
+    121	004D  88 21				     mov	     byte ptr [bx+di+0],ah ; X[i] := ah
+    122	004F  83 06 002Dr 01			     add	     i,1
+    123	0054  EB C8				     jmp	     laco
+    124	0056			     fim:
+    125	0056  C6 01 24				     mov	     byte ptr [bx+di+0],'$' ; X[i] := '$'
+    126	0059  C3				     ret
+    127	005A					     endp
+    128				     ; puts: função que imprime uma string na	tela até encontrar '$'
+    129				     ; - Chamada da função:
+    130				     ; lea dx,<end_inic_string>
+    131				     ; call puts
+    132	005A			     puts    proc
+    133	005A  B4 09				     mov     ah,9
+    134	005C  CD 21				     int     21H
+    135	005E  C3				     ret
+    136	005F					     endp
+    137	005F			     codigo   ends
+    138					      end    inicio
+Turbo Assembler	 Version 3.2	    11/16/13 18:03:39	    Page 4
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/16/13"
+??FILENAME			  Text	 "decod	  "
+??TIME				  Text	 "18:03:39"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 DECOD
+@WORDSIZE			  Text	 2
+A				  Word	 DADOS:002A
+B				  Byte	 DADOS:002C
+BS				  Number 0008
+BUFFER				  Byte	 DADOS:0087
+BUFFER_PTR			  Word	 DADOS:0107
+CR				  Number 000D
+DECODIFICA			  Near	 CODIGO:0015
+ERRO				  Byte	 DADOS:010B
+FIM				  Near	 CODIGO:0056
+HANDLER				  Word	 DADOS:0109
+I				  Word	 DADOS:002D
+INICIO				  Near	 CODIGO:0000
+LACO				  Near	 CODIGO:001E
+LF				  Number 000A
+MSG0				  Byte	 DADOS:0134
+MSG1				  Byte	 DADOS:015A
+MSG2				  Byte	 DADOS:0184
+MSG3				  Byte	 DADOS:01BE
+MSG4				  Byte	 DADOS:01EE
+NEGATIVO			  Near	 CODIGO:0035
+NOME_CIF			  Byte	 DADOS:0069
+NOME_DIC			  Byte	 DADOS:004B
+N_LINHAS			  Word	 DADOS:0132
+POSITIVO			  Near	 CODIGO:0037
+PUTS				  Near	 CODIGO:005A
+TABELA				  Byte	 DADOS:002F
+TABELA_PTR			  Word	 DADOS:0049
+TAMANHO				  Word	 DADOS:0130
+X				  Byte	 DADOS:000C
+Y				  Byte	 DADOS:0000
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  005F Para	  none
+DADOS				  16  0225 Para	  none
+PILHA				  16  0100 Para	  Stack
+

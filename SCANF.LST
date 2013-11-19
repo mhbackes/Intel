@@ -1,0 +1,113 @@
+Turbo Assembler	 Version 3.2	    11/13/13 20:36:12	    Page 1
+scanf.ASM
+
+
+
+      1						     assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      3	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      4	      =0008		     BS		       EQU    08H ; caractere ASCII "Backspace"
+      5
+      6	0000			     dados    segment
+      7
+      8	0000  ??		     nome    db	?
+      9	0001			     dados    ends
+     10
+     11	0000			     pilha    segment stack
+     12	0000  80*(????)			      dw     128 dup(?)
+     13	0100			     pilha    ends
+     14
+     15	0000			     codigo   segment
+     16	0000			     inicio:
+     17	0000  B8 0000s			     mov    ax,dados
+     18	0003  8E D8			     mov    ds,ax
+     19	0005  8E C0				     mov    es,ax
+     20
+     21	0007  BF 0000r				     lea    di,	nome
+     22	000A  E8 000B				     call    scanf
+     23	000D  BA 0000r				     lea    dx,	nome
+     24	0010  E8 0032				     call    puts
+     25	0013  B8 4C00				     mov    ax,4c00h
+     26	0016  CD 21			     int    21h
+     27
+     28
+     29
+     30	0018			     scanf   proc
+     31	0018  B3 00				     mov bl,0 ;conta quantos caracteres	foram lidos
+     32	001A  B4 01		     entrada: mov    ah,1
+     33	001C  CD 21			      int    21h     ; le um caracter com eco
+     34	001E  3C 0D			      cmp    al,CR   ; compara com carriage return
+     35	0020  74 1F			      je     continua
+     36	0022  3C 08				      cmp    al,BS
+     37	0024  74 07				      je	     backspace
+     38	0026  88 05			      mov    [di],al ; coloca no buffer
+     39	0028  47			      inc    di
+     40	0029  FE C3				      inc    bl
+     41	002B  EB ED			      jmp    entrada
+     42	002D			     backspace:
+     43	002D  80 FB 00				      cmp    bl,0
+     44	0030  74 E8				      je	     entrada
+     45	0032  FE CB				      dec    bl
+     46	0034  4F				      dec    di
+     47	0035  B4 02				      mov    ah,2
+     48	0037  B2 20				      mov    dl,' '
+     49	0039  CD 21				      int    21H
+     50	003B  B2 08				      mov    dl,BS
+     51	003D  CD 21				      int    21H
+     52	003F  EB D9				      jmp    entrada
+     53	0041  C6 05 24		     continua: mov   byte ptr [di],'$'	; '$' ou 0
+     54	0044  C3				     ret
+     55	0045					     endp
+     56	0045			     puts    proc
+     57	0045  B4 09				     mov     ah,9
+Turbo Assembler	 Version 3.2	    11/13/13 20:36:12	    Page 2
+scanf.ASM
+
+
+
+     58	0047  CD 21				     int     21H
+     59	0049  C3				     ret
+     60	004A					     endp
+     61
+     62
+     63
+     64
+     65
+     66
+     67
+     68	004A			     codigo   ends
+     69
+     70					      end    inicio
+Turbo Assembler	 Version 3.2	    11/13/13 20:36:12	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/13/13"
+??FILENAME			  Text	 "scanf	  "
+??TIME				  Text	 "20:36:12"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 SCANF
+@WORDSIZE			  Text	 2
+BACKSPACE			  Near	 CODIGO:002D
+BS				  Number 0008
+CONTINUA			  Near	 CODIGO:0041
+CR				  Number 000D
+ENTRADA				  Near	 CODIGO:001A
+INICIO				  Near	 CODIGO:0000
+LF				  Number 000A
+NOME				  Byte	 DADOS:0000
+PUTS				  Near	 CODIGO:0045
+SCANF				  Near	 CODIGO:0018
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  004A Para	  none
+DADOS				  16  0001 Para	  none
+PILHA				  16  0100 Para	  Stack
+

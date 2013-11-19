@@ -1,0 +1,196 @@
+Turbo Assembler	 Version 3.2	    11/17/13 20:37:42	    Page 1
+fgets.ASM
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      4	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      5
+      6				     ; SEGMENTO	DE DADOS DO PROGRAMA
+      7	0000			     dados     segment
+      8	0000  63 69 66 72 61 64	6F+  nome      db 'cifrados.txt',0
+      9	      73 2E 74 78 74 00
+     10	000D  1E*(??)		     buffer    db 30 dup (?)
+     11	002B  ????		     handler   dw ?
+     12	002D  6E 61 6F 20 64 65	75+  erro      db 'nao deu pra abrir$'
+     13	      20 70 72 61 20 61	62+
+     14	      72 69 72 24
+     15	003F  0000		     tamanho   dw 0
+     16	0041  0000		     tam_str   dw 0
+     17	0043			     dados     ends
+     18
+     19				     ; SEGMENTO	DE PILHA DO PROGRAMA
+     20	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     21	0000  80*(????)			      dw     128 dup(?)
+     22	0100			     pilha    ends
+     23
+     24				     ; SEGMENTO	DE CÓDIGO DO PROGRAMA
+     25	0000			     codigo   segment
+     26	0000			     inicio:	     ; CS e IP sao inicializados com este endereco
+     27	0000  B8 0000s			      mov    ax,dados		; inicializa DS
+     28	0003  8E D8			      mov    ds,ax		; com endereco do segmento DADOS
+     29	0005  8E C0			      mov    es,ax		; idem em ES
+     30				     ; fim da carga inicial dos	registradores de segmento
+     31	0007  BA 0000r				     lea	     dx,nome
+     32	000A  E8 0083				     call    fopen
+     33	000D  A3 002Br				     mov	     handler,ax
+     34
+     35	0010  8B 1E 002Br			     mov	     bx,handler
+     36	0014  BF 000Dr				     lea	     di,buffer
+     37	0017  E8 0021				     call    fgets
+     38	001A  A3 0041r				     mov	     tam_str,ax
+     39	001D  BA 000Dr				     lea     dx,buffer
+     40	0020  E8 0079				     call    puts
+     41
+     42	0023  8B 1E 002Br			     mov	     bx,handler
+     43	0027  BF 000Dr				     lea	     di,buffer
+     44	002A  E8 000E				     call    fgets
+     45	002D  A3 0041r				     mov	     tam_str,ax
+     46	0030  BA 000Dr				     lea     dx,buffer
+     47	0033  E8 0066				     call    puts
+     48
+     49	0036  B8 4C00				      mov    ax,4c00h ;	funcao retornar	ao DOS no AH
+     50							      ;	codigo de retorno 0 no AL
+     51	0039  CD 21			      int    21h      ;	chamada	do DOS
+     52				     ; fgets: lê uma linha válida do arquivo
+     53				     ; - Chamada da função:
+     54				     ;	     mov bx,<handler>
+     55				     ;	     lea di,<buffer>
+     56				     ;	     call fgets
+     57				     ;	     mov <var_tamanho>,ax
+Turbo Assembler	 Version 3.2	    11/17/13 20:37:42	    Page 2
+fgets.ASM
+
+
+
+     58	003B			     fgets   proc
+     59	003B			     fgets_pre_laco:
+     60	003B  C7 06 003Fr 0000			     mov	     tamanho,0
+     61	0041			     fgets_laco:
+     62	0041  B4 3F				     mov     ah,3fh	 ; le um caracter do arquivo
+     63	0043  B9 0001			     mov     cx,1
+     64	0046  8B D7				     mov     dx,di
+     65	0048  CD 21			     int     21h
+     66	004A  8B FA				     mov     di,dx
+     67	004C  3B C1			     cmp     ax,cx
+     68	004E  75 38			     jne     fgets_EOF
+     69	0050			     fgets_teste_enter:
+     70	0050  8A 15			     mov     dl,[di]
+     71	0052  80 FA 0D			     cmp     dl, CR
+     72	0055  74 EA			     je	     fgets_laco
+     73	0057  80 FA 0A				     cmp     dl, LF
+     74	005A  74 17				     je	     fgets_enter
+     75	005C			     fgets_teste_minuscula:
+     76	005C  80 FA 61				     cmp     dl,'a'
+     77	005F  7C 0A				     jl	     fgets_incrementa
+     78	0061  80 FA 7A				     cmp     dl,'z'
+     79	0064  7F 05				     jg	     fgets_incrementa
+     80	0066			     fgets_minuscula:
+     81	0066  80 EA 20				     sub     dl,32
+     82	0069  88 15				     mov     byte ptr [di],dl
+     83	006B			     fgets_incrementa:
+     84	006B  83 06 003Fr 01			     add	     tamanho,1
+     85	0070  47				     inc	     di
+     86	0071  EB CE				     jmp     fgets_laco
+     87	0073			     fgets_enter:
+     88	0073  83 3E 003Fr 05			     cmp	     tamanho,5
+     89	0078  7D 06				     jge	     fim_enter
+     90	007A  2B 3E 003Fr			     sub	     di,tamanho
+     91	007E  EB BB				     jmp	     fgets_pre_laco
+     92	0080			     fim_enter:
+     93	0080  C6 05 24				     mov     byte ptr [di],'$'
+     94	0083  A1 003Fr				     mov     ax,tamanho
+     95	0086  F8				     clc
+     96	0087  C3				     ret
+     97	0088			     fgets_EOF:
+     98	0088  C6 05 24				     mov     byte ptr [di],'$'
+     99	008B  A1 003Fr				     mov     ax,tamanho
+    100	008E  F9				     stc
+    101	008F  C3				     ret
+    102	0090					     endp
+    103				     ; fopen: abre um arquivo, nao retorna mensagem de erro,
+    104				     ; o nome do arquivo deve estar correto.
+    105				     ; - Chamada da função:
+    106				     ;	     lea dx,<str_nome_arq>
+    107				     ;	     call fopen
+    108				     ;	     mov <handler>,ax
+    109	0090			     fopen   proc
+    110	0090  B4 3D			     mov    ah,3dh
+    111	0092  B0 00			     mov    al,0
+    112	0094  CD 21			     int     21h
+    113	0096  C3			     ret
+    114	0097					     endp
+Turbo Assembler	 Version 3.2	    11/17/13 20:37:42	    Page 3
+fgets.ASM
+
+
+
+    115				     ; fclose: fecha um	arquivo	previamente aberto
+    116				     ; - Chamada da função:
+    117				     ;	     mov bx,<handler>
+    118				     ;	     call fclose
+    119	0097			     fclose  proc
+    120	0097  B4 3E				     mov ah,3eh	      ;	fecha arquivo
+    121	0099  CD 21			     int 21h
+    122	009B  C3				     ret
+    123	009C					     endp
+    124
+    125
+    126
+    127
+    128
+    129	009C			     puts    proc
+    130	009C  B4 09				     mov     ah,9
+    131	009E  CD 21				     int     21H
+    132	00A0  C3				     ret
+    133	00A1					     endp
+    134
+    135	00A1			     codigo   ends
+    136					      end    inicio
+Turbo Assembler	 Version 3.2	    11/17/13 20:37:42	    Page 4
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/17/13"
+??FILENAME			  Text	 "fgets	  "
+??TIME				  Text	 "20:37:42"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 FGETS
+@WORDSIZE			  Text	 2
+BUFFER				  Byte	 DADOS:000D
+CR				  Number 000D
+ERRO				  Byte	 DADOS:002D
+FCLOSE				  Near	 CODIGO:0097
+FGETS				  Near	 CODIGO:003B
+FGETS_ENTER			  Near	 CODIGO:0073
+FGETS_EOF			  Near	 CODIGO:0088
+FGETS_INCREMENTA		  Near	 CODIGO:006B
+FGETS_LACO			  Near	 CODIGO:0041
+FGETS_MINUSCULA			  Near	 CODIGO:0066
+FGETS_PRE_LACO			  Near	 CODIGO:003B
+FGETS_TESTE_ENTER		  Near	 CODIGO:0050
+FGETS_TESTE_MINUSCULA		  Near	 CODIGO:005C
+FIM_ENTER			  Near	 CODIGO:0080
+FOPEN				  Near	 CODIGO:0090
+HANDLER				  Word	 DADOS:002B
+INICIO				  Near	 CODIGO:0000
+LF				  Number 000A
+NOME				  Byte	 DADOS:0000
+PUTS				  Near	 CODIGO:009C
+TAMANHO				  Word	 DADOS:003F
+TAM_STR				  Word	 DADOS:0041
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  00A1 Para	  none
+DADOS				  16  0043 Para	  none
+PILHA				  16  0100 Para	  Stack
+

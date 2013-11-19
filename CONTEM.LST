@@ -1,0 +1,282 @@
+Turbo Assembler	 Version 3.2	    11/16/13 18:43:26	    Page 1
+contem.ASM
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	       EQU    0DH ; caractere ASCII "Carriage Return"
+      4	      =000A		     LF	       EQU    0AH ; caractere ASCII "Line Feed"
+      5
+      6				     ; SEGMENTO	DE DADOS DO PROGRAMA
+      7	0000			     dados     segment
+      8	0000  64*(??)		     buffer1   db 100 dup (?)
+      9	0064  64*(??)		     buffer2   db 100 dup (?)
+     10	00C8  0000		     tam_str1  dw 0
+     11	00CA  0000		     tam_str2  dw 0
+     12	00CC  74 65 78 74 6F 2E	74+  nome      db 'texto.txt',0
+     13	      78 74 00
+     14
+     15	00D6  ????		     handler   dw ?
+     16	00D8  6E 61 6F 20 64 65	75+  erro      db 'nao deu pra abrir$'
+     17	      20 70 72 61 20 61	62+
+     18	      72 69 72 24
+     19	00EA  0000		     tamanho   dw 0
+     20
+     21	00EC  73 69 6D 24	     sim	       db 'sim$'
+     22	00F0  6E 61 6F 24	     nao	       db 'nao$'
+     23	00F4			     dados     ends
+     24
+     25				     ; SEGMENTO	DE PILHA DO PROGRAMA
+     26	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     27	0000  80*(????)			      dw     128 dup(?)
+     28	0100			     pilha    ends
+     29
+     30				     ; SEGMENTO	DE CÓDIGO DO PROGRAMA
+     31	0000			     codigo   segment
+     32	0000			     inicio:	     ; CS e IP sao inicializados com este endereco
+     33	0000  B8 0000s			      mov    ax,dados		; inicializa DS
+     34	0003  8E D8			      mov    ds,ax		; com endereco do segmento DADOS
+     35	0005  8E C0			      mov    es,ax		; idem em ES
+     36				     ; fim da carga inicial dos	registradores de segmento
+     37	0007  BA 00CCr				     lea	     dx,nome
+     38	000A  E8 00D2				     call    fopen
+     39	000D  A3 00D6r				     mov	     handler,ax
+     40
+     41	0010  8B 1E 00D6r			     mov	     bx,handler
+     42	0014  BF 0000r				     lea	     di,buffer1
+     43	0017  E8 0058				     call    fgets
+     44	001A  A3 00C8r				     mov	     tam_str1,ax
+     45
+     46	001D  8B 1E 00D6r			     mov	     bx,handler
+     47	0021  BF 0064r				     lea	     di,buffer2
+     48	0024  E8 004B				     call    fgets
+     49	0027  A3 00CAr				     mov	     tam_str2,ax
+     50
+     51	002A  B8 0000r				     lea	     ax,buffer1
+     52	002D  BB 0064r				     lea	     bx,buffer2
+     53	0030  8B 0E 00C8r			     mov	     cx,tam_str1
+     54	0034  8B 16 00CAr			     mov	     dx,tam_str2
+     55	0038  E8 0018				     call    contem?
+     56	003B  72 0B				     jc		     n
+     57	003D			     s:
+Turbo Assembler	 Version 3.2	    11/16/13 18:43:26	    Page 2
+contem.ASM
+
+
+
+     58	003D  BA 00ECr				     lea	     dx,sim
+     59	0040  E8 00A8				     call    puts
+     60	0043  B8 4C00				     mov    ax,4c00h ; funcao retornar ao DOS no AH
+     61							      ;	codigo de retorno 0 no AL
+     62	0046  CD 21			      int    21h      ;	chamada	do DOS
+     63	0048  BA 00F0r		     n:		     lea	     dx,nao
+     64	004B  E8 009D				     call    puts
+     65	004E  B8 4C00				      mov    ax,4c00h ;	funcao retornar	ao DOS no AH
+     66							      ;	codigo de retorno 0 no AL
+     67	0051  CD 21			      int    21h      ;	chamada	do DOS
+     68				     ; contem?:	testa se di é substring de si
+     69				     ; retorna cf=0 se sim ou cf=1 se não
+     70				     ; - Chamada da função:
+     71				     ;	     lea ax,<substring>
+     72				     ;	     lea bx,<string>
+     73				     ;	     mov cx,<tam_substring>
+     74				     ;	     mov dx,<tam_string>
+     75				     ;	     call contem?
+     76	0053			     contem? proc
+     77	0053			     contem?_laco:
+     78	0053  8B F0				     mov	     si,ax
+     79	0055  8B FB				     mov	     di,bx
+     80	0057  3B CA				     cmp	     cx,dx
+     81	0059  7F 15				     jg		     contem?_nao
+     82	005B  51				     push    cx
+     83	005C  F3> A6				     repe cmpsb
+     84	005E  83 F9 00				     cmp	     cx,0
+     85	0061  74 05				     je		     contem?_talvez
+     86	0063  59				     pop	     cx
+     87	0064			     contem?_incrementa:
+     88	0064  43				     inc	     bx
+     89	0065  4A				     dec	     dx
+     90	0066  EB EB				     jmp	     contem?_laco
+     91	0068			     contem?_talvez:
+     92	0068  59				     pop	     cx
+     93	0069  4F				     dec	     di
+     94	006A  4E				     dec	     si
+     95	006B  A6				     cmpsb
+     96	006C  75 F6				     jne	     contem?_incrementa
+     97	006E			     contem?_sim:
+     98	006E  F8				     clc
+     99	006F  C3				     ret
+    100	0070			     contem?_nao:
+    101	0070  F9				     stc
+    102	0071  C3				     ret
+    103	0072					     endp
+    104				     ; fgets: lê uma linha válida do arquivo
+    105				     ; - Chamada da função:
+    106				     ;	     mov bx,<handler>
+    107				     ;	     lea di,<buffer>
+    108				     ;	     call fgets
+    109				     ;	     mov <var_tamanho>,ax
+    110	0072			     fgets   proc
+    111	0072			     fgets_pre_laco:
+    112	0072  C7 06 00EAr 0000			     mov	     tamanho,0
+    113	0078  B4 3F		     fgets_laco:   mov	     ah,3fh	 ; le um caracter do arquivo
+    114	007A  B9 0001			     mov     cx,1
+Turbo Assembler	 Version 3.2	    11/16/13 18:43:26	    Page 3
+contem.ASM
+
+
+
+    115	007D  8B D7				     mov     dx,di
+    116	007F  CD 21			     int     21h
+    117	0081  8B FA				     mov     di,dx
+    118	0083  3B C1			     cmp     ax,cx
+    119	0085  75 38			     jne     fgets_EOF
+    120	0087			     fgets_teste_enter:
+    121	0087  8A 15			     mov     dl,[di]
+    122	0089  80 FA 0D			     cmp     dl, CR
+    123	008C  74 EA			     je	     fgets_laco
+    124	008E  80 FA 0A				     cmp     dl, LF
+    125	0091  74 17				     je	     fgets_enter
+    126	0093			     fgets_teste_minuscula:
+    127	0093  80 FA 61				     cmp     dl,'a'
+    128	0096  7C 0A				     jl	     fgets_incrementa
+    129	0098  80 FA 7A				     cmp     dl,'z'
+    130	009B  7F 05				     jg	     fgets_incrementa
+    131	009D			     fgets_minuscula:
+    132	009D  80 EA 20				     sub     dl,32
+    133	00A0  88 15				     mov     byte ptr [di],dl
+    134	00A2			     fgets_incrementa:
+    135	00A2  83 06 00EAr 01			     add	     tamanho,1
+    136	00A7  47				     inc	     di
+    137	00A8  EB CE				     jmp     fgets_laco
+    138	00AA			     fgets_enter:
+    139	00AA  83 3E 00EAr 05			     cmp	     tamanho,5
+    140	00AF  7D 06				     jge	     fim_enter
+    141	00B1  2B 3E 00EAr			     sub	     di,tamanho
+    142	00B5  EB BB				     jmp	     fgets_pre_laco
+    143	00B7			     fim_enter:
+    144	00B7  C6 05 00				     mov     byte ptr [di],0
+    145	00BA  A1 00EAr				     mov     ax,tamanho
+    146	00BD  F8				     clc
+    147	00BE  C3				     ret
+    148	00BF			     fgets_EOF:
+    149	00BF  C6 05 00				     mov     byte ptr [di],0
+    150	00C2  A1 00EAr				     mov     ax,tamanho
+    151	00C5  F9				     stc
+    152	00C6  C3				     ret
+    153	00C7					     endp
+    154				     ; printf2:	Imprime	um valor de 2 dígitos na tela
+    155				     ; -Chamada	da função:
+    156				     ; mov ax,<número>
+    157				     ; call printf
+    158	00C7			     printf2 proc
+    159	00C7  B3 0A				     mov bl,10
+    160	00C9  F6 F3				     div bl
+    161	00CB  04 30				     add al,'0'
+    162	00CD  8A D0				     mov dl,al
+    163	00CF  50				     push ax
+    164	00D0  B4 02				     mov ah,2
+    165	00D2  CD 21				     int 21H
+    166	00D4  58				     pop ax
+    167	00D5  80 C4 30				     add ah,'0'
+    168	00D8  8A D4				     mov dl,ah
+    169	00DA  B4 02				     mov ah,2
+    170	00DC  CD 21				     int 21H
+    171	00DE  C3				     ret
+Turbo Assembler	 Version 3.2	    11/16/13 18:43:26	    Page 4
+contem.ASM
+
+
+
+    172	00DF					     endp
+    173				     ; fopen: abre um arquivo, nao retorna mensagem de erro,
+    174				     ; o nome do arquivo deve estar correto.
+    175				     ; - Chamada da função:
+    176				     ;	     lea dx,<str_nome_arq>
+    177				     ;	     call fopen
+    178				     ;	     mov <handler>,ax
+    179	00DF			     fopen   proc
+    180	00DF  B4 3D			     mov    ah,3dh
+    181	00E1  B0 00			     mov    al,0
+    182	00E3  CD 21			     int     21h
+    183	00E5  C3			     ret
+    184	00E6					     endp
+    185				     ; fclose: fecha um	arquivo	previamente aberto
+    186				     ; - Chamada da função:
+    187				     ;	     mov bx,<handler>
+    188				     ;	     call fclose
+    189	00E6			     fclose  proc
+    190	00E6  B4 3E				     mov ah,3eh	      ;	fecha arquivo
+    191	00E8  CD 21			     int 21h
+    192	00EA  C3				     ret
+    193	00EB					     endp
+    194				     ; puts: função que imprime uma string na	tela até encontrar '$'
+    195				     ; - Chamada da função:
+    196				     ; lea dx,<end_inic_string>
+    197				     ; call puts
+    198	00EB			     puts    proc
+    199	00EB  B4 09				     mov     ah,9
+    200	00ED  CD 21				     int     21H
+    201	00EF  C3				     ret
+    202	00F0					     endp
+    203	00F0			     codigo   ends
+    204					      end    inicio
+Turbo Assembler	 Version 3.2	    11/16/13 18:43:26	    Page 5
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/16/13"
+??FILENAME			  Text	 "contem  "
+??TIME				  Text	 "18:43:26"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 CONTEM
+@WORDSIZE			  Text	 2
+BUFFER1				  Byte	 DADOS:0000
+BUFFER2				  Byte	 DADOS:0064
+CONTEM?				  Near	 CODIGO:0053
+CONTEM?_INCREMENTA		  Near	 CODIGO:0064
+CONTEM?_LACO			  Near	 CODIGO:0053
+CONTEM?_NAO			  Near	 CODIGO:0070
+CONTEM?_SIM			  Near	 CODIGO:006E
+CONTEM?_TALVEZ			  Near	 CODIGO:0068
+CR				  Number 000D
+ERRO				  Byte	 DADOS:00D8
+FCLOSE				  Near	 CODIGO:00E6
+FGETS				  Near	 CODIGO:0072
+FGETS_ENTER			  Near	 CODIGO:00AA
+FGETS_EOF			  Near	 CODIGO:00BF
+FGETS_INCREMENTA		  Near	 CODIGO:00A2
+FGETS_LACO			  Near	 CODIGO:0078
+FGETS_MINUSCULA			  Near	 CODIGO:009D
+FGETS_PRE_LACO			  Near	 CODIGO:0072
+FGETS_TESTE_ENTER		  Near	 CODIGO:0087
+FGETS_TESTE_MINUSCULA		  Near	 CODIGO:0093
+FIM_ENTER			  Near	 CODIGO:00B7
+FOPEN				  Near	 CODIGO:00DF
+HANDLER				  Word	 DADOS:00D6
+INICIO				  Near	 CODIGO:0000
+LF				  Number 000A
+N				  Near	 CODIGO:0048
+NAO				  Byte	 DADOS:00F0
+NOME				  Byte	 DADOS:00CC
+PRINTF2				  Near	 CODIGO:00C7
+PUTS				  Near	 CODIGO:00EB
+S				  Near	 CODIGO:003D
+SIM				  Byte	 DADOS:00EC
+TAMANHO				  Word	 DADOS:00EA
+TAM_STR1			  Word	 DADOS:00C8
+TAM_STR2			  Word	 DADOS:00CA
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  00F0 Para	  none
+DADOS				  16  00F4 Para	  none
+PILHA				  16  0100 Para	  Stack
+

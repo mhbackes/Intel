@@ -1,0 +1,102 @@
+Turbo Assembler	 Version 3.2	    11/15/13 00:58:55	    Page 1
+printf4.ASM
+
+
+
+      1						     assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3
+      4	0000			     dados    segment
+      5	0000  07A5		     a		      dw	     1957
+      6	0002			     dados    ends
+      7
+      8	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+      9	0000  80*(????)			      dw     128 dup(?)
+     10	0100			     pilha    ends
+     11
+     12	0000			     codigo   segment
+     13	0000			     inicio:
+     14	0000  B8 0000s			     mov    ax,dados
+     15	0003  8E D8			     mov    ds,ax
+     16	0005  8E C0				     mov    es,ax
+     17
+     18	0007  A1 0000r				     mov     ax,a
+     19	000A  E8 0005				     call printf4
+     20	000D			     fim:
+     21	000D  B8 4C00			     mov    ax,4c00h
+     22	0010  CD 21			     int    21h
+     23				     ; printf4:	Imprime	um valor de 4 dígitos na tela
+     24				     ; -Chamada	da função:
+     25				     ; mov ax,<número>
+     26				     ; call printf
+     27	0012			     printf4 proc
+     28	0012  BA 0000				     mov     dx,0
+     29	0015  BB 03E8				     mov     bx,1000
+     30	0018  F7 F3				     div     bx
+     31	001A  52				     push    dx
+     32	001B  8A D0				     mov     dl,al
+     33	001D  80 C2 30				     add     dl,'0'
+     34	0020  B4 02				     mov     ah,2
+     35	0022  CD 21				     int     21H
+     36	0024  58				     pop     ax
+     37	0025  B3 64				     mov	     bl,100
+     38	0027  F6 F3				     div	     bl
+     39	0029  50				     push    ax
+     40	002A  8A D0				     mov     dl,al
+     41	002C  80 C2 30				     add     dl,'0'
+     42	002F  8B C2				     mov	     ax,dx
+     43	0031  B4 02				     mov     ah,2
+     44	0033  CD 21				     int     21H
+     45	0035  58				     pop     ax
+     46	0036  8A C4				     mov	     al,ah
+     47	0038  B4 00				     mov	     ah,0
+     48	003A  B3 0A				     mov	     bl,10
+     49	003C  F6 F3				     div     bl
+     50	003E  04 30				     add     al,'0'
+     51	0040  8A D0				     mov     dl,al
+     52	0042  50				     push    ax
+     53	0043  B4 02				     mov     ah,2
+     54	0045  CD 21				     int     21H
+     55	0047  58				     pop     ax
+     56	0048  80 C4 30				     add     ah,'0'
+     57	004B  8A D4				     mov     dl,ah
+Turbo Assembler	 Version 3.2	    11/15/13 00:58:55	    Page 2
+printf4.ASM
+
+
+
+     58	004D  B4 02				     mov     ah,2
+     59	004F  CD 21				     int     21H
+     60	0051  C3				     ret
+     61	0052					     endp
+     62
+     63	0052			     codigo   ends
+     64
+     65					      end    inicio
+Turbo Assembler	 Version 3.2	    11/15/13 00:58:55	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/15/13"
+??FILENAME			  Text	 "printf4 "
+??TIME				  Text	 "00:58:55"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 PRINTF4
+@WORDSIZE			  Text	 2
+A				  Word	 DADOS:0000
+FIM				  Near	 CODIGO:000D
+INICIO				  Near	 CODIGO:0000
+PRINTF4				  Near	 CODIGO:0012
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  0052 Para	  none
+DADOS				  16  0002 Para	  none
+PILHA				  16  0100 Para	  Stack
+

@@ -1,0 +1,152 @@
+Turbo Assembler	 Version 3.2	    11/13/13 18:25:00	    Page 1
+letecla.asm
+
+
+
+      1					      assume cs:codigo,ds:dados,es:dados,ss:pilha
+      2
+      3	      =000D		     CR	      EQU    0DH ; constante - codigo ASCII do caractere "carriage return"
+      4	      =000A		     LF	      EQU    0AH ; constante - codigo ASCII do caractere "line feed"
+      5	      =001B		     ESCAPE   EQU    1BH ; constante - codigo ASCII do caractere "escape"
+      6
+      7				     ; definicao do segmento de	dados do programa
+      8	0000			     dados    segment
+      9
+     10	0000  0D 0A 46 6F 69 20	6C+  mensagD  db     CR,LF,'Foi	lido o digito '
+     11	      69 64 6F 20 6F 20	64+
+     12	      69 67 69 74 6F 20
+     13	0014  ??		     digito   db     ?
+     14	0015  20 21 0D 0A 24		      db     ' !',CR,LF,'$'
+     15
+     16	001A  0D 0A 46 6F 69 20	6C+  mensagL  db     CR,LF,'Foi	lida a letra '
+     17	      69 64 61 20 61 20	6C+
+     18	      65 74 72 61 20
+     19	002D  ??		     letra    db     ?
+     20	002E  20 21 0D 0A 24		      db     ' !',CR,LF,'$'
+     21
+     22	0033  0D 0A 46 6F 69 20	6C+  mensagN  db     CR,LF,'Foi	lido um	'
+     23	      69 64 6F 20 75 6D	20
+     24	0041  ??		     char     db     ?
+     25	0042  2C 20 71 75 65 20	6E+	      db     ',	que nao	e'' um digito nem uma letra !',CR,LF,'$'
+     26	      61 6F 20 65 27 20	75+
+     27	      6D 20 64 69 67 69	74+
+     28	      6F 20 6E 65 6D 20	75+
+     29	      6D 61 20 6C 65 74	72+
+     30	      61 20 21 0D 0A 24
+     31
+     32	006B			     dados    ends
+     33
+     34				     ; definicao do segmento de	pilha do programa
+     35	0000			     pilha    segment stack ; permite inicializacao automatica de SS:SP
+     36	0000  80*(????)			      dw     128 dup(?)
+     37	0100			     pilha    ends
+     38
+     39				     ; definicao do segmento de	codigo do programa
+     40	0000			     codigo   segment
+     41	0000			     inicio:  ;	CS e IP	sao inicializados com este endereco
+     42	0000  B8 0000s			      mov    ax,dados  ; inicializa DS
+     43	0003  8E D8			      mov    ds,ax     ; com endereco do segmento DADOS
+     44	0005  8E C0			      mov    es,ax     ; idem em ES
+     45				     ; fim da carga inicial dos	registradores de segmento
+     46
+     47				     ; a partir	daqui, as instrucoes especificas para cada programa
+     48				     ; neste exemplo, o	programa faz a leitura de caracteres digitados no
+     49				     ; teclado,	analisa	o que leu e exibe na tela uma mensagem informando
+     50				     ; que tipo	de caractere foi lido; se leu ESC, termina a execucao
+     51
+     52	0007			     ler_tecla:
+     53	0007  B4 01			      mov    ah,1      ; le um caractere do teclado e escreve na tela
+     54	0009  CD 21			      int    21h       ; caractere lido	volta no registrador AL
+     55	000B  3C 1B			      cmp    al,ESCAPE ; se ESC, termina a execucao do programa
+     56	000D  74 3F			      je     fim
+     57
+Turbo Assembler	 Version 3.2	    11/13/13 18:25:00	    Page 2
+letecla.asm
+
+
+
+     58	000F  3C 30			      cmp    al,'0'
+     59	0011  72 2F			      jb     naoera    ; abaixo	de '0',	nenhum digito ou letra
+     60	0013  3C 39			      cmp    al,'9'
+     61	0015  76 1F			      jbe    eradigito ; se '0'	<= AL <= '9', era um digito
+     62
+     63	0017  3C 41			      cmp    al,'A'
+     64	0019  72 27			      jb     naoera    ; entre '9' e 'A', nenhum digito	ou letra
+     65	001B  3C 5A			      cmp    al,'Z'
+     66	001D  76 0B			      jbe    eraletra  ; se 'A'	<= AL <= 'Z', era uma letra
+     67
+     68	001F  3C 61			      cmp    al,'a'
+     69	0021  72 1F			      jb     naoera    ; entre 'Z' e 'a', nenhum digito	ou letra
+     70	0023  3C 7A			      cmp    al,'z'
+     71	0025  76 03			      jbe    eraletra  ; se 'a'	<= AL <= 'z', era uma letra
+     72	0027  EB 19 90			      jmp    naoera
+     73
+     74	002A			     eraletra:
+     75	002A  A2 002Dr			      mov    letra,al		; coloca letra lida na mensagem
+     76	002D  BA 001Ar			      lea    dx,mensagL		; endereco da mensagem em DX
+     77	0030  B4 09			      mov    ah,9		; funcao exibir	mensagem no AH
+     78	0032  CD 21			      int    21h		; chamada do DOS
+     79	0034  EB D1			      jmp    ler_tecla
+     80
+     81	0036			     eradigito:
+     82	0036  A2 0014r			      mov    digito,al		; coloca digito	lido na	mensagem
+     83	0039  BA 0000r			      lea    dx,mensagD		; endereco da mensagem em DX
+     84	003C  B4 09			      mov    ah,9		; funcao exibir	mensagem no AH
+     85	003E  CD 21			      int    21h		; chamada do DOS
+     86	0040  EB C5			      jmp    ler_tecla
+     87
+     88	0042			     naoera:
+     89	0042  A2 0041r			      mov    char,al		; coloca caractere lido	na mensagem
+     90	0045  BA 0033r			      lea    dx,mensagN		; endereco da mensagem em DX
+     91	0048  B4 09			      mov    ah,9		; funcao exibir	mensagem no AH
+     92	004A  CD 21			      int    21h		; chamada do DOS
+     93	004C  EB B9			      jmp    ler_tecla
+     94
+     95				     ; retorno ao DOS com codigo de retorno 0 no AL (fim normal)
+     96	004E			     fim:
+     97	004E  B8 4C00			      mov    ax,4c00h		; funcao retornar ao DOS no AH
+     98	0051  CD 21			      int    21h		; chamada do DOS
+     99
+    100	0053			     codigo   ends
+    101
+    102				     ; a diretiva a seguir indica o fim	do codigo fonte	(ultima	linha do arquivo)
+    103				     ; e informa que o programa	deve come‡ar a execucao	no rotulo "inicio"
+    104					      end    inicio
+Turbo Assembler	 Version 3.2	    11/13/13 18:25:00	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "11/13/13"
+??FILENAME			  Text	 "letecla "
+??TIME				  Text	 "18:25:00"
+??VERSION			  Number 0314
+@CPU				  Text	 0101H
+@CURSEG				  Text	 CODIGO
+@FILENAME			  Text	 LETECLA
+@WORDSIZE			  Text	 2
+CHAR				  Byte	 DADOS:0041
+CR				  Number 000D
+DIGITO				  Byte	 DADOS:0014
+ERADIGITO			  Near	 CODIGO:0036
+ERALETRA			  Near	 CODIGO:002A
+ESCAPE				  Number 001B
+FIM				  Near	 CODIGO:004E
+INICIO				  Near	 CODIGO:0000
+LER_TECLA			  Near	 CODIGO:0007
+LETRA				  Byte	 DADOS:002D
+LF				  Number 000A
+MENSAGD				  Byte	 DADOS:0000
+MENSAGL				  Byte	 DADOS:001A
+MENSAGN				  Byte	 DADOS:0033
+NAOERA				  Near	 CODIGO:0042
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODIGO				  16  0053 Para	  none
+DADOS				  16  006B Para	  none
+PILHA				  16  0100 Para	  Stack
+
